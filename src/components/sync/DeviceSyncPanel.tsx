@@ -11,6 +11,7 @@ import { setIsOnline, setSelectedDeviceId } from "@/store/slices/appSlice";
 import { resetNotificationState } from "@/store/slices/notificationSlice";
 import { resetSyllabusState } from "@/store/slices/syllabusSlice";
 import { resetSyncState, setSyncStatus } from "@/store/slices/syncSlice";
+import { runSyncNow } from "@/store/thunks/syncThunks";
 import { clearDeviceState } from "@/services/storage";
 import { DeviceId } from "@/types";
 
@@ -22,6 +23,7 @@ export function DeviceSyncPanel() {
   const focus = useSelector((state: RootState) => state.focus);
   const subjects = useSelector((state: RootState) => state.syllabus.subjects);
   const sync = useSelector((state: RootState) => state.sync);
+  const isSyncing = sync.syncStatus === "syncing";
 
   function resetLocalState() {
     void clearDeviceState(app.selectedDeviceId);
@@ -88,10 +90,15 @@ export function DeviceSyncPanel() {
 
         <View className="flex-row flex-wrap gap-2">
           <Pressable
-            className="flex-1 rounded-2xl bg-violetDeep px-4 py-4"
-            onPress={() => dispatch(setSyncStatus(app.isOnline ? "syncing" : "offline"))}
+            className={`flex-1 rounded-2xl px-4 py-4 ${
+              isSyncing ? "bg-lavender" : "bg-violetDeep"
+            }`}
+            disabled={isSyncing}
+            onPress={() => void dispatch(runSyncNow())}
           >
-            <Text className="text-center font-bold text-white">Sync Now</Text>
+            <Text className="text-center font-bold text-white">
+              {isSyncing ? "Syncing..." : "Sync Now"}
+            </Text>
           </Pressable>
           <Pressable className="flex-1 rounded-2xl bg-coral px-4 py-4" onPress={resetLocalState}>
             <Text className="text-center font-bold text-orange-950">Reset Device</Text>
@@ -103,7 +110,7 @@ export function DeviceSyncPanel() {
       <Card title="Current State">
         <View className="grid-cols-1 gap-3 md:grid md:grid-cols-3">
           <Summary label="Current device" value={app.selectedDeviceId} />
-          <Summary label="Sync status" value={sync.syncStatus} />
+          <Summary label="Sync status" value={formatSyncStatus(sync.syncStatus)} />
           <Summary label="Server version" value={sync.lastKnownServerVersion.toString()} />
         </View>
       </Card>
@@ -121,13 +128,37 @@ export function DeviceSyncPanel() {
       </Section>
 
       <Section title="Server result">
-        <Text className="text-sm leading-5 text-muted">
-          After sync, the backend returns the merged student state here. That keeps the demo clear without
-          showing raw operation payloads to the viewer.
-        </Text>
+        {sync.serverStatePreview ? (
+          <View className="grid-cols-1 gap-3 md:grid md:grid-cols-2">
+            <Summary
+              label="Server version"
+              value={String(sync.serverStatePreview.serverVersion ?? sync.lastKnownServerVersion)}
+            />
+            <Summary
+              label="Notifications"
+              value={String(sync.serverStatePreview.notifications ?? 0)}
+            />
+          </View>
+        ) : (
+          <Text className="text-sm leading-5 text-muted">
+            Sync once to show the merged server result for this device.
+          </Text>
+        )}
       </Section>
     </View>
   );
+}
+
+function formatSyncStatus(status: RootState["sync"]["syncStatus"]): string {
+  const labels: Record<RootState["sync"]["syncStatus"], string> = {
+    error: "Error",
+    idle: "Ready",
+    offline: "Offline",
+    synced: "Synced",
+    syncing: "Syncing"
+  };
+
+  return labels[status];
 }
 
 function Section({ children, title }: PropsWithChildren<{ title: string }>) {
