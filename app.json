@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "Alcovia Offline Study",
+    "slug": "alcovia-offline-study",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "alcovia",
+    "userInterfaceStyle": "light",
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router"
+    ]
+  }
+}

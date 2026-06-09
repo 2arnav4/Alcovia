@@ -1,0 +1,64 @@
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { SyncOperation } from "@/types";
+
+type SyncStatus = "idle" | "syncing" | "synced" | "offline" | "error";
+
+export interface SyncSliceState {
+  pendingOperations: SyncOperation[];
+  lastKnownServerVersion: number;
+  syncStatus: SyncStatus;
+  serverStatePreview: Record<string, unknown> | null;
+}
+
+const initialState: SyncSliceState = {
+  pendingOperations: [],
+  lastKnownServerVersion: 0,
+  syncStatus: "idle",
+  serverStatePreview: null
+};
+
+const syncSlice = createSlice({
+  name: "sync",
+  initialState,
+  reducers: {
+    enqueueOperation(state, action: PayloadAction<SyncOperation>) {
+      state.pendingOperations.push(action.payload);
+    },
+    setSyncStatus(state, action: PayloadAction<SyncStatus>) {
+      state.syncStatus = action.payload;
+    },
+    setServerStatePreview(state, action: PayloadAction<Record<string, unknown> | null>) {
+      state.serverStatePreview = action.payload;
+    },
+    setLastKnownServerVersion(state, action: PayloadAction<number>) {
+      state.lastKnownServerVersion = action.payload;
+    },
+    hydrateSyncState(_state, action: PayloadAction<SyncSliceState>) {
+      return action.payload;
+    },
+    clearAcceptedOperations(state, action: PayloadAction<string[]>) {
+      const acceptedOperationIds = new Set(action.payload);
+      state.pendingOperations = state.pendingOperations.filter(
+        (operation) => !acceptedOperationIds.has(operation.operationId)
+      );
+    },
+    clearPendingOperations(state) {
+      state.pendingOperations = [];
+    },
+    resetSyncState() {
+      return initialState;
+    }
+  }
+});
+
+export const {
+  clearAcceptedOperations,
+  clearPendingOperations,
+  enqueueOperation,
+  hydrateSyncState,
+  resetSyncState,
+  setLastKnownServerVersion,
+  setServerStatePreview,
+  setSyncStatus
+} = syncSlice.actions;
+export default syncSlice.reducer;
