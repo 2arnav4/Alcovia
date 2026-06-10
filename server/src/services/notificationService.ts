@@ -7,6 +7,14 @@ export function getNotificationLogs(): NotificationLog[] {
 }
 
 export function recordNotificationFromSink(payload: Partial<NotificationLog> & { message?: string }) {
+  const existingNotification = payload.sessionId
+    ? notificationLogs.find((notification) => notification.sessionId === payload.sessionId)
+    : undefined;
+
+  if (existingNotification) {
+    return existingNotification;
+  }
+
   const notification: NotificationLog = {
     id: payload.id ?? createServerId("notification"),
     sessionId: payload.sessionId,

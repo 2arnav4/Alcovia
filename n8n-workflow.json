@@ -1,0 +1,97 @@
+{
+  "name": "Alcovia Focus Success Notification",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "alcovia-focus-success",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "0ddf28aa-3cb7-4e42-98e3-8ff646823cf0",
+      "name": "Focus Success Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -420,
+        0
+      ],
+      "webhookId": "alcovia-focus-success"
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $json.body ?? $json;\nconst sessionId = payload.sessionId;\nif (!sessionId) {\n  throw new Error('sessionId is required');\n}\n\nconst store = $getWorkflowStaticData('global');\nstore.processedSessionIds ??= {};\n\nif (store.processedSessionIds[sessionId]) {\n  return [];\n}\n\nstore.processedSessionIds[sessionId] = payload.eventId ?? `focus-success:${sessionId}`;\nreturn [{ json: payload }];"
+      },
+      "id": "1697145e-f1d5-4e9c-a739-7c3d908748fc",
+      "name": "Dedupe by Session ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ALCOVIA_NOTIFICATION_SINK_URL || 'http://host.docker.internal:4000/api/notifications/sink' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "17d5f672-66ce-436e-b641-5a9a459db224",
+      "name": "Send Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        100,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Focus Success Webhook": {
+      "main": [
+        [
+          {
+            "node": "Dedupe by Session ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dedupe by Session ID": {
+      "main": [
+        [
+          {
+            "node": "Send Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "10c52148-806f-455f-8b59-676b45cb924a",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

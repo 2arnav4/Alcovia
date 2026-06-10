@@ -74,7 +74,6 @@ export const serverState: ServerStateSnapshot = {
 export let serverVersion = 0;
 export const appliedOperationIds = new Set<string>();
 export const rewardedSessionIds = new Set<string>();
-export const notifiedSessionIds = new Set<string>();
 export const operationLog: SyncOperation[] = [];
 export const notificationLogs: NotificationLog[] = [];
 

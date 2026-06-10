@@ -2,7 +2,7 @@
 
 Offline-first EdTech app for the Alcovia Full Stack Engineering Intern assignment.
 
-This build includes the app shell, Redux state, per-device local persistence, operation queue, frontend sync flow, and Express backend sync API.
+This build includes the Expo app, Redux state, per-device local persistence, operation queue, frontend sync flow, Express backend, and an importable n8n workflow.
 
 ## Run
 
@@ -17,6 +17,20 @@ In another terminal:
 npm --prefix server install
 npm run server
 ```
+
+Copy the server environment example before starting Express:
+
+```bash
+cp server/.env.example server/.env
+```
+
+Import `n8n-workflow.json` into n8n, activate it, and run n8n with the notification sink URL available:
+
+```bash
+ALCOVIA_NOTIFICATION_SINK_URL=http://host.docker.internal:4000/api/notifications/sink npx n8n
+```
+
+When n8n runs directly on the host instead of Docker, use `http://localhost:4000/api/notifications/sink` for `ALCOVIA_NOTIFICATION_SINK_URL`.
 
 The Expo app runs at `http://localhost:8081` on web. The backend defaults to `http://localhost:4000`.
 
@@ -35,11 +49,28 @@ The Expo app runs at `http://localhost:8081` on web. The backend defaults to `ht
 - SyncOperation records are queued for focus and syllabus actions
 - Clean Sync Lab with device selector, online/offline toggle, sync button, reset, and readable pending operation list
 - Express APIs for health, state, sync, and notifications
+- Express-to-n8n focus-success webhook with a stable event and session id
+- n8n session-id deduplication before notification delivery
+- Mock notification sink at `POST /api/notifications/sink`
 
 ## Remaining Work
 
-- Idempotent notification trigger and exported `n8n-workflow.json`
 - Recorded two-device convergence walkthrough
+
+## Constraint Choices
+
+- Frontend: TypeScript with React Native and Expo Router
+- Backend: TypeScript with Express
+- On-device storage: AsyncStorage
+- Server storage: in-memory collections, which the assignment explicitly permits
+- Account model: one hardcoded `student_1` shared by both device profiles
+- Web device separation: `phone` and `laptop` use different AsyncStorage namespaces
+- Sync model: custom operation queue and merge logic; no off-the-shelf sync product
+- Task conflict rule: the highest progress rank wins and deletion tombstones win over edits
+- Replay protection: Express deduplicates `operationId`, rewards by `sessionId`, and automation events by stable `eventId`
+- Notification delivery: genuine n8n workflow calling a mock Express sink
+- Focus grace period: five seconds before an app switch/background event fails the session
+- Development storage resets whenever the Express process restarts because server storage is intentionally in memory
 
 ## Core Files
 
@@ -48,3 +79,5 @@ The Expo app runs at `http://localhost:8081` on web. The backend defaults to `ht
 - `src/features/sync/operationTemplates.ts`
 - `src/features/sync/conflictResolution.ts`
 - `src/features/sync/syncClient.ts`
+- `server/src/services/automationService.ts`
+- `n8n-workflow.json`

@@ -1,7 +1,6 @@
 import {
   appliedOperationIds,
   bumpServerVersion,
-  notifiedSessionIds,
   notificationLogs,
   operationLog,
   rewardedSessionIds,
@@ -9,7 +8,10 @@ import {
   serverVersion
 } from "../data/serverState";
 import { FocusSession, SyncOperation, SyncRequest, SyncResponse, TaskStatus } from "../types";
-import { createServerId } from "../utils/ids";
+import {
+  flushAutomationDeliveries,
+  queueFocusSuccessAutomation
+} from "./automationService";
 
 const TASK_STATUS_RANK: Record<TaskStatus, number> = {
   not_started: 0,
@@ -27,7 +29,7 @@ export function getState() {
   };
 }
 
-export function handleSync(request: SyncRequest): SyncResponse {
+export async function handleSync(request: SyncRequest): Promise<SyncResponse> {
   const acceptedOperationIds = new Set<string>();
 
   for (const operation of request.operations) {
@@ -42,6 +44,8 @@ export function handleSync(request: SyncRequest): SyncResponse {
     applyOperation(operation);
     bumpServerVersion();
   }
+
+  await flushAutomationDeliveries();
 
   return {
     serverVersion,
@@ -138,15 +142,11 @@ function applyFocusSessionCompleted(operation: SyncOperation): void {
     serverState.student.streak += 1;
   }
 
-  if (!notifiedSessionIds.has(sessionId)) {
-    notifiedSessionIds.add(sessionId);
-    notificationLogs.unshift({
-      id: createServerId("notification"),
-      sessionId,
-      message: `Streak now ${serverState.student.streak} days, +${FOCUS_REWARD_COINS} coins.`,
-      createdAtIso: new Date().toISOString()
-    });
-  }
+  queueFocusSuccessAutomation({
+    sessionId,
+    streak: serverState.student.streak,
+    coinsAwarded: FOCUS_REWARD_COINS
+  });
 }
 
 function applyFocusSessionFailed(operation: SyncOperation): void {

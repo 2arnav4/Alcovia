@@ -4,7 +4,7 @@ import { handleSync } from "../services/syncService";
 
 export const syncRouter = Router();
 
-syncRouter.post("/", (request, response) => {
+syncRouter.post("/", async (request, response) => {
   const syncRequest = request.body as Partial<SyncRequest>;
   const validationError = validateSyncRequest(syncRequest);
   if (validationError) {
@@ -12,7 +12,7 @@ syncRouter.post("/", (request, response) => {
     return;
   }
 
-  response.json(handleSync(syncRequest as SyncRequest));
+  response.json(await handleSync(syncRequest as SyncRequest));
 });
 
 const DEVICE_IDS: DeviceId[] = ["phone", "laptop"];
