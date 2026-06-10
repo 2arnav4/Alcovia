@@ -151,7 +151,9 @@ function requireIsoDate(value: string, fieldName: string): void {
 }
 
 function requireTargetMinutes(value: number): void {
-  if (!Number.isInteger(value) || value < 25 || value > 120) {
+  const testDurationAllowed =
+    process.env.EXPO_PUBLIC_FOCUS_TEST_MODE === "true" && value === 1;
+  if (!Number.isInteger(value) || (!testDurationAllowed && (value < 25 || value > 120))) {
     throw new Error("targetMinutes must be between 25 and 120");
   }
 }

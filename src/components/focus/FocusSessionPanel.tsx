@@ -20,7 +20,8 @@ import { enqueueOperation } from "@/store/slices/syncSlice";
 import { FocusSession } from "@/types";
 import { createLocalId } from "@/utils/ids";
 
-const DURATIONS = [25, 45, 60, 90, 120];
+const FOCUS_TEST_MODE = process.env.EXPO_PUBLIC_FOCUS_TEST_MODE === "true";
+const DURATIONS = FOCUS_TEST_MODE ? [1, 25, 45, 60, 90, 120] : [25, 45, 60, 90, 120];
 
 export function FocusSessionPanel() {
   const dispatch = useDispatch<AppDispatch>();
@@ -164,7 +165,7 @@ export function FocusSessionPanel() {
                     selected ? "text-white" : "text-ink"
                   }`}
                 >
-                  {duration} min
+                  {duration === 1 ? "1 min test" : `${duration} min`}
                 </Text>
               </Pressable>
             );

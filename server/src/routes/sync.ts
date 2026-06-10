@@ -156,5 +156,10 @@ function isIsoDate(value: unknown): value is string {
 }
 
 function isTargetMinutes(value: unknown): value is number {
-  return Number.isInteger(value) && Number(value) >= 25 && Number(value) <= 120;
+  const numericValue = Number(value);
+  const testDurationAllowed = process.env.FOCUS_TEST_MODE === "true" && numericValue === 1;
+  return (
+    Number.isInteger(value) &&
+    (testDurationAllowed || (numericValue >= 25 && numericValue <= 120))
+  );
 }

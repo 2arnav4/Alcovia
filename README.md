@@ -102,6 +102,79 @@ The Expo app runs at `http://localhost:8081` on web. The backend defaults to `ht
 
 The Sync Lab can demonstrate phone/laptop divergence, status conflict, delete/edit conflict and duplicate replay. API checks should also cover invalid payloads, early focus completion, duplicate rewards, restart persistence and duplicate sink delivery. The exact manual walkthrough is in `DECISIONS.md`.
 
+### Test the real focus automation path
+
+Run this in one terminal session. It creates a valid 25 minute session using a start time from 26 minutes ago, sends the start and completion through the real sync API, and keeps the same ids available for the replay test.
+
+```bash
+API_BASE_URL="https://alcovia-a2dg.onrender.com"
+SESSION_ID="curl-focus-$(date +%s)"
+START_OPERATION_ID="curl-start-$SESSION_ID"
+COMPLETE_OPERATION_ID="curl-complete-$SESSION_ID"
+STARTED_AT=$(node -e 'console.log(new Date(Date.now() - 26 * 60 * 1000).toISOString())')
+COMPLETED_AT=$(node -e 'console.log(new Date().toISOString())')
+
+SYNC_BODY=$(cat <<JSON
+{
+  "studentId": "student_1",
+  "deviceId": "phone",
+  "lastKnownServerVersion": 0,
+  "operations": [
+    {
+      "operationId": "$START_OPERATION_ID",
+      "deviceId": "phone",
+      "studentId": "student_1",
+      "type": "focus_session_started",
+      "localSequence": 1,
+      "payload": {
+        "session": {
+          "sessionId": "$SESSION_ID",
+          "deviceId": "phone",
+          "targetMinutes": 25,
+          "status": "running",
+          "startedAtIso": "$STARTED_AT"
+        }
+      }
+    },
+    {
+      "operationId": "$COMPLETE_OPERATION_ID",
+      "deviceId": "phone",
+      "studentId": "student_1",
+      "type": "focus_session_completed",
+      "localSequence": 2,
+      "payload": {
+        "sessionId": "$SESSION_ID",
+        "targetMinutes": 25,
+        "startedAtIso": "$STARTED_AT",
+        "completedAtIso": "$COMPLETED_AT"
+      }
+    }
+  ]
+}
+JSON
+)
+
+curl -sS -X POST "$API_BASE_URL/api/sync" \
+  -H "Content-Type: application/json" \
+  --data "$SYNC_BODY"
+```
+
+Replay the exact same operations. Coins, streak, focus minutes, automation attempts and notification count must not increase:
+
+```bash
+curl -sS -X POST "$API_BASE_URL/api/sync" \
+  -H "Content-Type: application/json" \
+  --data "$SYNC_BODY"
+```
+
+Inspect the notification and automation records:
+
+```bash
+curl -sS "$API_BASE_URL/api/notifications"
+```
+
+The response should contain one notification with the generated `SESSION_ID` and one automation delivery whose event has the same `sessionId`, whose status is `delivered`, and whose attempts value is `1`.
+
 ## Left Out and Next Steps
 
 The core coding is complete. The remaining submission work is to give Express a public HTTPS URL, import and publish the workflow in n8n Cloud, put the resulting URLs in the two environment files, and record the demo video.
