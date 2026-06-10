@@ -1,5 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { syncPendingOperations } from "@/features/sync/syncClientTemplate";
+import { syncPendingOperations } from "@/features/sync/syncClient";
 import { RootState } from "@/store";
 import { applyServerFocusState } from "@/store/slices/focusSlice";
 import { applyServerNotifications } from "@/store/slices/notificationSlice";

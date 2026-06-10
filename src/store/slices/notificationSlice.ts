@@ -6,13 +6,7 @@ export interface NotificationSliceState {
 }
 
 const initialState: NotificationSliceState = {
-  notificationLogs: [
-    {
-      id: "placeholder-notification",
-      message: "n8n/mock notifications will appear here after sync is implemented.",
-      createdAtIso: new Date().toISOString()
-    }
-  ]
+  notificationLogs: []
 };
 
 const notificationSlice = createSlice({
@@ -26,7 +20,7 @@ const notificationSlice = createSlice({
       return action.payload;
     },
     applyServerNotifications(state, action: PayloadAction<NotificationLog[]>) {
-      state.notificationLogs = action.payload.length > 0 ? action.payload : state.notificationLogs;
+      state.notificationLogs = action.payload;
     },
     resetNotificationState() {
       return initialState;

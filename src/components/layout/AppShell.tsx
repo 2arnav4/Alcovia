@@ -86,7 +86,7 @@ export function AppShell({ children }: PropsWithChildren) {
 
               <View className="mt-3 flex-row flex-wrap gap-2">
                 <Badge label="Offline-ready" tone="light" />
-                <Badge label="Two-device demo" tone="light" />
+                <Badge label="Multi-device" tone="light" />
               </View>
             </View>
           </LinearGradient>

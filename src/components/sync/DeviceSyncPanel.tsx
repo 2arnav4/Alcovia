@@ -47,7 +47,7 @@ export function DeviceSyncPanel() {
             <Ionicons color="#4b2fc9" name="swap-horizontal" size={28} />
           </View>
           <View className="flex-1">
-            <Text className="font-bold text-ink">Two-device practice mode</Text>
+            <Text className="font-bold text-ink">Device sync practice</Text>
             <Text className="mt-1 text-sm leading-5 text-muted">
               Switch between phone and laptop, go offline, make edits, and sync later.
             </Text>
@@ -56,55 +56,55 @@ export function DeviceSyncPanel() {
       </Card>
 
       <Card title="Device Controls">
-      <View className="gap-4">
-        <View>
-          <Text className="mb-2 text-sm font-bold text-ink">Choose device</Text>
-          <View className="flex-row gap-2">
-            {DEVICES.map((deviceId) => (
-              <Pressable
-                key={deviceId}
-                className={`flex-1 rounded-2xl px-4 py-4 ${
-                  app.selectedDeviceId === deviceId ? "bg-violet" : "bg-violetSoft"
-                }`}
-                onPress={() => dispatch(setSelectedDeviceId(deviceId))}
-              >
-                <Text
-                  className={`text-center font-bold ${
-                    app.selectedDeviceId === deviceId ? "text-white" : "text-violetDeep"
+        <View className="gap-4">
+          <View>
+            <Text className="mb-2 text-sm font-bold text-ink">Choose device</Text>
+            <View className="flex-row gap-2">
+              {DEVICES.map((deviceId) => (
+                <Pressable
+                  key={deviceId}
+                  className={`flex-1 rounded-2xl px-4 py-4 ${
+                    app.selectedDeviceId === deviceId ? "bg-violet" : "bg-violetSoft"
                   }`}
+                  onPress={() => dispatch(setSelectedDeviceId(deviceId))}
                 >
-                  {deviceId}
-                </Text>
-              </Pressable>
-            ))}
+                  <Text
+                    className={`text-center font-bold ${
+                      app.selectedDeviceId === deviceId ? "text-white" : "text-violetDeep"
+                    }`}
+                  >
+                    {deviceId}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+
+          <Toggle
+            enabled={app.isOnline}
+            enabledLabel="This device will try to sync."
+            disabledLabel="This device stores changes locally."
+            label="Network"
+            onToggle={toggleNetwork}
+          />
+
+          <View className="flex-row flex-wrap gap-2">
+            <Pressable
+              className={`flex-1 rounded-2xl px-4 py-4 ${
+                isSyncing ? "bg-lavender" : "bg-violetDeep"
+              }`}
+              disabled={isSyncing}
+              onPress={() => void dispatch(runSyncNow())}
+            >
+              <Text className="text-center font-bold text-white">
+                {isSyncing ? "Syncing..." : "Sync Now"}
+              </Text>
+            </Pressable>
+            <Pressable className="flex-1 rounded-2xl bg-coral px-4 py-4" onPress={resetLocalState}>
+              <Text className="text-center font-bold text-orange-950">Reset Device</Text>
+            </Pressable>
           </View>
         </View>
-
-        <Toggle
-          enabled={app.isOnline}
-          enabledLabel="This device will try to sync."
-          disabledLabel="This device stores changes locally."
-          label="Network"
-          onToggle={toggleNetwork}
-        />
-
-        <View className="flex-row flex-wrap gap-2">
-          <Pressable
-            className={`flex-1 rounded-2xl px-4 py-4 ${
-              isSyncing ? "bg-lavender" : "bg-violetDeep"
-            }`}
-            disabled={isSyncing}
-            onPress={() => void dispatch(runSyncNow())}
-          >
-            <Text className="text-center font-bold text-white">
-              {isSyncing ? "Syncing..." : "Sync Now"}
-            </Text>
-          </Pressable>
-          <Pressable className="flex-1 rounded-2xl bg-coral px-4 py-4" onPress={resetLocalState}>
-            <Text className="text-center font-bold text-orange-950">Reset Device</Text>
-          </Pressable>
-        </View>
-      </View>
       </Card>
 
       <Card title="Current State">

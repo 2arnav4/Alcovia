@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getNotificationLogs, recordMockNotification } from "../services/notificationService";
+import { getNotificationLogs, recordNotificationFromSink } from "../services/notificationService";
 
 export const notificationsRouter = Router();
 
@@ -7,7 +7,7 @@ notificationsRouter.get("/", (_request, response) => {
   response.json({ notifications: getNotificationLogs() });
 });
 
-notificationsRouter.post("/mock", (request, response) => {
-  const notification = recordMockNotification(request.body);
+notificationsRouter.post("/sink", (request, response) => {
+  const notification = recordNotificationFromSink(request.body);
   response.status(201).json(notification);
 });

@@ -8,8 +8,6 @@ export function chooseTaskStatus(currentStatus: TaskStatus, incomingStatus: Task
 }
 
 export function mergeTaskEditWithDelete(currentTask: StudyTask, incomingTask: StudyTask): StudyTask {
-  // Next phase:
-  // Preserve tombstones on the server. If either side says deleted, deleted wins.
   if (currentTask.deleted || incomingTask.deleted) {
     return { ...currentTask, deleted: true };
   }

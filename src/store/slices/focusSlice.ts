@@ -26,10 +26,10 @@ const focusSlice = createSlice({
     setSelectedDuration(state, action: PayloadAction<number>) {
       state.selectedDuration = action.payload;
     },
-    startSessionPlaceholder(state, action: PayloadAction<FocusSession>) {
+    startSession(state, action: PayloadAction<FocusSession>) {
       state.currentSession = action.payload;
     },
-    completeDemoSession(state) {
+    completeSession(state) {
       if (!state.currentSession) {
         return;
       }
@@ -46,7 +46,7 @@ const focusSlice = createSlice({
       state.streak += 1;
       state.todayFocusMinutes += completedSession.targetMinutes;
     },
-    failSessionPlaceholder(state, action: PayloadAction<FocusFailureReason>) {
+    failSession(state, action: PayloadAction<FocusFailureReason>) {
       if (!state.currentSession) {
         return;
       }
@@ -66,11 +66,21 @@ const focusSlice = createSlice({
       state,
       action: PayloadAction<{ focusSessions: FocusSession[]; student: StudentState }>
     ) {
-      state.focusSessions = action.payload.focusSessions;
+      const serverCurrentSession = state.currentSession
+        ? action.payload.focusSessions.find(
+            (session) => session.sessionId === state.currentSession?.sessionId
+          )
+        : null;
+
+      state.focusSessions = action.payload.focusSessions.filter(
+        (session) => session.status !== "running"
+      );
       state.coins = action.payload.student.coins;
       state.streak = action.payload.student.streak;
       state.todayFocusMinutes = action.payload.student.todayFocusMinutes;
-      state.currentSession = null;
+      if (serverCurrentSession && serverCurrentSession.status !== "running") {
+        state.currentSession = null;
+      }
     },
     resetFocusState() {
       return initialState;
@@ -79,12 +89,12 @@ const focusSlice = createSlice({
 });
 
 export const {
-  completeDemoSession,
-  failSessionPlaceholder,
+  completeSession,
+  failSession,
   applyServerFocusState,
   hydrateFocusState,
   resetFocusState,
   setSelectedDuration,
-  startSessionPlaceholder
+  startSession
 } = focusSlice.actions;
 export default focusSlice.reducer;

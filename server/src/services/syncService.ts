@@ -28,10 +28,10 @@ export function getState() {
 }
 
 export function handleSync(request: SyncRequest): SyncResponse {
-  const acceptedOperationIds: string[] = [];
+  const acceptedOperationIds = new Set<string>();
 
   for (const operation of request.operations) {
-    acceptedOperationIds.push(operation.operationId);
+    acceptedOperationIds.add(operation.operationId);
 
     if (appliedOperationIds.has(operation.operationId)) {
       continue;
@@ -45,7 +45,7 @@ export function handleSync(request: SyncRequest): SyncResponse {
 
   return {
     serverVersion,
-    acceptedOperationIds,
+    acceptedOperationIds: Array.from(acceptedOperationIds),
     state: serverState,
     notifications: notificationLogs
   };

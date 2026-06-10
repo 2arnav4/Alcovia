@@ -1,8 +1,8 @@
 # Alcovia Offline Study
 
-Offline-first EdTech prototype for the Alcovia Full Stack Engineering Intern assignment.
+Offline-first EdTech app for the Alcovia Full Stack Engineering Intern assignment.
 
-This pass builds the project structure, app shell, Redux state, per-device local persistence, operation templates, and Express backend skeleton. The full timer, sync merge engine, and n8n workflow are intentionally left as focused next-phase implementation work.
+This build includes the app shell, Redux state, per-device local persistence, operation queue, frontend sync flow, and Express backend sync API.
 
 ## Run
 
@@ -25,27 +25,26 @@ The Expo app runs at `http://localhost:8081` on web. The backend defaults to `ht
 - Single assignment account: `student_1`
 - Real app navigation: Dashboard, Focus, Syllabus, Sync Lab, Notifications
 - Sidebar on wider screens and bottom navigation on phone-sized screens
-- Two demo devices: `phone` and `laptop`
+- Two device profiles: `phone` and `laptop`
 - Per-device storage namespace: `alcovia:v1:<deviceId>:redux-state`
 - Redux state persists separately for each selected device
 - Dashboard with student details, study summary, syllabus snapshot, and sync readiness
 - Local task status updates with derived chapter and subject progress
-- Placeholder focus session handlers for start, give up, and complete demo session
-- Placeholder SyncOperation records are queued for focus and syllabus actions
+- Timestamp-based focus countdown with automatic success at zero
+- Give Up and five-second app-switch/background failure handling
+- SyncOperation records are queued for focus and syllabus actions
 - Clean Sync Lab with device selector, online/offline toggle, sync button, reset, and readable pending operation list
-- Express route skeletons for health, state, sync, and notifications
+- Express APIs for health, state, sync, and notifications
 
-## Next Implementation Work
+## Remaining Work
 
-- Focus timer accuracy and app background failure handling
-- Backend operation dedupe and merge logic
-- Idempotent focus rewards by `sessionId`
 - Idempotent notification trigger and exported `n8n-workflow.json`
+- Recorded two-device convergence walkthrough
 
-## Template Files To Fill Next
+## Core Files
 
-- `src/features/focus/focusSessionTemplate.ts`
+- `src/components/focus/FocusSessionLifecycle.tsx`
+- `src/features/focus/sessionTiming.ts`
 - `src/features/sync/operationTemplates.ts`
-- `src/features/sync/conflictResolutionTemplate.ts`
-- `src/features/sync/syncClientTemplate.ts`
-- `src/features/automation/n8nNotificationTemplate.ts`
+- `src/features/sync/conflictResolution.ts`
+- `src/features/sync/syncClient.ts`

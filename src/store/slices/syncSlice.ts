@@ -23,6 +23,9 @@ const syncSlice = createSlice({
   reducers: {
     enqueueOperation(state, action: PayloadAction<SyncOperation>) {
       state.pendingOperations.push(action.payload);
+      if (state.syncStatus === "synced") {
+        state.syncStatus = "idle";
+      }
     },
     setSyncStatus(state, action: PayloadAction<SyncStatus>) {
       state.syncStatus = action.payload;

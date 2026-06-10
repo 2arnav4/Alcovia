@@ -6,11 +6,11 @@ export function getNotificationLogs(): NotificationLog[] {
   return notificationLogs;
 }
 
-export function recordMockNotification(payload: Partial<NotificationLog> & { message?: string }) {
+export function recordNotificationFromSink(payload: Partial<NotificationLog> & { message?: string }) {
   const notification: NotificationLog = {
     id: payload.id ?? createServerId("notification"),
     sessionId: payload.sessionId,
-    message: payload.message ?? "Mock notification received.",
+    message: payload.message ?? "Notification received.",
     createdAtIso: payload.createdAtIso ?? new Date().toISOString()
   };
 

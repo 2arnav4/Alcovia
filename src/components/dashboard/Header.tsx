@@ -11,7 +11,7 @@ export function Header() {
       <View className="flex-row flex-wrap items-center justify-between gap-3">
         <View>
           <Text className="text-3xl font-bold text-ink">Alcovia Offline Study</Text>
-          <Text className="mt-1 text-sm text-muted">Hardcoded account: student_1</Text>
+          <Text className="mt-1 text-sm text-muted">Grade 10 study dashboard</Text>
         </View>
         <View className="flex-row gap-2">
           <Badge label={`Device: ${selectedDeviceId}`} tone="blue" />
