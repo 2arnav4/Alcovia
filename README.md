@@ -1,192 +1,137 @@
 # Alcovia Offline Study
 
-Offline-first EdTech app for the Alcovia Full Stack Engineering Intern assignment.
+Alcovia is an offline-first study app built for the Full Stack Engineering Intern assignment. It uses TypeScript, React Native with Expo, Express and n8n.
 
-This build includes the Expo app, Redux state, per-device local persistence, operation queue, frontend sync flow, Express backend, and an importable n8n workflow.
+The app has one hardcoded student, `student_1`, and two device profiles, `phone` and `laptop`. Each device keeps its own saved state and pending changes, so both profiles can be used like separate devices in one browser.
 
-## Run
+## Features
+
+- Focus sessions that can start, finish or fail while offline
+- A five-second grace period before leaving the app fails a running session
+- Coins, streak and focus-minute rewards counted once per successful session
+- Subjects, chapters and tasks with instant offline progress updates
+- Custom conflict handling for changes made on different devices
+- A Sync Lab for device switching, conflict tests and duplicate replay tests
+- Express APIs with persisted state and operation deduplication
+- An n8n workflow that creates one notification for each successful session
+- An Alerts page that reads the notification back into the app
+
+## Run the Frontend with the Hosted Backend
+
+Create a root `.env` file:
+
+```env
+EXPO_PUBLIC_API_BASE_URL=https://alcovia-a2dg.onrender.com
+EXPO_PUBLIC_FOCUS_TEST_MODE=false
+```
+
+Then run:
 
 ```bash
 npm install
 npm run web
 ```
 
-In another terminal:
+The web app normally opens at `http://localhost:8081`.
+
+## Run Everything Locally
+
+Create the root `.env`:
+
+```env
+EXPO_PUBLIC_API_BASE_URL=http://localhost:4000
+EXPO_PUBLIC_FOCUS_TEST_MODE=false
+```
+
+Create `server/.env`:
+
+```env
+PORT=4000
+N8N_WEBHOOK_URL=https://YOUR-N8N-DOMAIN/webhook/focus-success
+NOTIFICATION_SINK_URL=https://YOUR-PUBLIC-BACKEND/api/notifications/sink
+FOCUS_TEST_MODE=false
+```
+
+Run the frontend:
+
+```bash
+npm install
+npm run web
+```
+
+Run Express in another terminal:
 
 ```bash
 npm --prefix server install
 npm run server
 ```
 
-Copy the server environment example before starting Express:
+## One-Minute Demo Mode
 
-```bash
-cp server/.env.example server/.env
+The assignment uses focus sessions from 25 to 120 minutes. A one-minute option is included only to make the recorded demo practical.
+
+Set both values to `true` and restart the frontend and backend:
+
+```env
+EXPO_PUBLIC_FOCUS_TEST_MODE=true
+FOCUS_TEST_MODE=true
 ```
 
-For local app testing, create a root `.env`:
+Keep both values disabled for the normal assignment behavior.
 
-```bash
-cp .env.example .env
-```
-
-Use `http://localhost:4000` for `EXPO_PUBLIC_API_BASE_URL` while the app and backend are on the same computer. A physical phone needs the computer LAN address or a public backend URL.
-
-## n8n Cloud Setup
-
-The n8n Cloud workflow cannot call `localhost` on this computer. Express must be available through a public HTTPS URL before the full automation can be tested. A deployed backend is preferred; a temporary tunnel is also enough for the demo.
+## n8n Setup
 
 1. Import `n8n-workflow.json` into n8n Cloud.
-2. Publish the workflow and copy its production webhook URL.
-3. Put the production webhook in `server/.env` as `N8N_WEBHOOK_URL`.
-4. Put the public Express sink URL in `server/.env` as `NOTIFICATION_SINK_URL=https://YOUR-PUBLIC-BACKEND/api/notifications/sink`.
-5. Put the same public backend base URL in the root `.env` as `EXPO_PUBLIC_API_BASE_URL=https://YOUR-PUBLIC-BACKEND`.
-6. Restart Express and Expo after changing the environment files.
+2. Publish the workflow.
+3. Put its production webhook URL in `N8N_WEBHOOK_URL` on the backend.
+4. Put the public notification sink URL in `NOTIFICATION_SINK_URL`.
+5. Restart or redeploy Express after changing the environment variables.
 
-The backend adds `notificationSinkUrl` to the automation event. The imported workflow reads that value in its HTTP Request node, so it does not depend on n8n host environment variables.
+After Express confirms a successful focus session, it sends one event to n8n. n8n calls the mock notification sink, and the Alerts page displays the saved notification. The assignment allows this mock HTTP sink instead of a real WhatsApp provider.
 
-The Expo app runs at `http://localhost:8081` on web. The backend defaults to `http://localhost:4000`.
+## Sync Rules
 
-## Current Scope
+Task progress uses this order:
 
-- Single assignment account: `student_1`
-- Real app navigation: Dashboard, Focus, Syllabus, Sync Lab, Notifications
-- Sidebar on wider screens and bottom navigation on phone-sized screens
-- Two device profiles: `phone` and `laptop`
-- Per-device storage namespace: `alcovia:v1:<deviceId>:redux-state`
-- Redux state persists separately for each selected device
-- Dashboard with student details, study summary, syllabus snapshot, and sync readiness
-- Local task status updates with derived chapter and subject progress
-- Timestamp-based focus countdown with automatic success at zero
-- Give Up and five-second app-switch/background failure handling
-- SyncOperation records are queued for focus and syllabus actions
-- Clean Sync Lab with device selector, online/offline toggle, sync button, reset, and readable pending operation list
-- Express APIs for health, state, sync, and notifications
-- Express-to-n8n focus-success webhook with a stable event and session id
-- n8n session-id deduplication after confirmed notification delivery
-- Mock notification sink at `POST /api/notifications/sink`
-
-## Manual Setup Left
-
-- Deploy or tunnel Express so n8n Cloud can reach the mock notification sink
-- Import, publish and test `n8n-workflow.json` in the n8n Cloud workspace used for the demo
-- Record the two-device walkthrough if a video submission is needed
-
-## Constraint Choices
-
-- Frontend: TypeScript with React Native and Expo Router
-- Backend: TypeScript with Express
-- On-device storage: AsyncStorage
-- Server storage: JSON files written atomically inside `server/data`
-- Account model: one hardcoded `student_1` shared by both device profiles
-- Web device separation: `phone` and `laptop` use different AsyncStorage namespaces
-- Sync model: custom operation queue and merge logic; no off-the-shelf sync product
-- Task conflict rule: the highest progress rank wins and deletion tombstones win over edits
-- Replay protection: Express deduplicates `operationId`, rewards by `sessionId`, and automation events by stable `eventId`
-- Notification delivery: genuine n8n workflow calling a mock Express sink
-- Focus grace period: five seconds before an app switch/background event fails the session
-- Server state, processed operation ids, rewarded session ids and automation deliveries survive an Express restart
-- Concurrent sync requests share one automation flush, so one Express process does not post the same pending event to n8n twice at the same time
-- Today's focus total is stored with a UTC date and resets when that date changes
-
-## Conflict Rules
-
-- Task status uses progress rank: `done` beats `in_progress`, which beats `not_started`.
-- Delete uses a tombstone and wins against an edit.
-- Duplicate operations are ignored by stable `operationId`.
-- A focus success is rewarded once by stable `sessionId`.
-- A success cannot be downgraded by a late running or failed operation.
-- A completion arriving before its start waits in the operation log and is checked after the matching start arrives.
-
-## Testing
-
-The Sync Lab can demonstrate phone/laptop divergence, status conflict, delete/edit conflict and duplicate replay. API checks should also cover invalid payloads, early focus completion, duplicate rewards, restart persistence and duplicate sink delivery. The exact manual walkthrough is in `DECISIONS.md`.
-
-### Test the real focus automation path
-
-Run this in one terminal session. It creates a valid 25 minute session using a start time from 26 minutes ago, sends the start and completion through the real sync API, and keeps the same ids available for the replay test.
-
-```bash
-API_BASE_URL="https://alcovia-a2dg.onrender.com"
-SESSION_ID="curl-focus-$(date +%s)"
-START_OPERATION_ID="curl-start-$SESSION_ID"
-COMPLETE_OPERATION_ID="curl-complete-$SESSION_ID"
-STARTED_AT=$(node -e 'console.log(new Date(Date.now() - 26 * 60 * 1000).toISOString())')
-COMPLETED_AT=$(node -e 'console.log(new Date().toISOString())')
-
-SYNC_BODY=$(cat <<JSON
-{
-  "studentId": "student_1",
-  "deviceId": "phone",
-  "lastKnownServerVersion": 0,
-  "operations": [
-    {
-      "operationId": "$START_OPERATION_ID",
-      "deviceId": "phone",
-      "studentId": "student_1",
-      "type": "focus_session_started",
-      "localSequence": 1,
-      "payload": {
-        "session": {
-          "sessionId": "$SESSION_ID",
-          "deviceId": "phone",
-          "targetMinutes": 25,
-          "status": "running",
-          "startedAtIso": "$STARTED_AT"
-        }
-      }
-    },
-    {
-      "operationId": "$COMPLETE_OPERATION_ID",
-      "deviceId": "phone",
-      "studentId": "student_1",
-      "type": "focus_session_completed",
-      "localSequence": 2,
-      "payload": {
-        "sessionId": "$SESSION_ID",
-        "targetMinutes": 25,
-        "startedAtIso": "$STARTED_AT",
-        "completedAtIso": "$COMPLETED_AT"
-      }
-    }
-  ]
-}
-JSON
-)
-
-curl -sS -X POST "$API_BASE_URL/api/sync" \
-  -H "Content-Type: application/json" \
-  --data "$SYNC_BODY"
+```text
+not_started < in_progress < done
 ```
 
-Replay the exact same operations. Coins, streak, focus minutes, automation attempts and notification count must not increase:
+The higher progress wins when two devices change the same task. A deletion is kept as a tombstone and wins against an edit. Duplicate operations are ignored using `operationId`. Focus rewards and notifications are counted once using `sessionId`.
 
-```bash
-curl -sS -X POST "$API_BASE_URL/api/sync" \
-  -H "Content-Type: application/json" \
-  --data "$SYNC_BODY"
+These rules do not use device time, because phone and laptop clocks may disagree.
+
+## Choices Made Where the Assignment Was Open
+
+- The background grace period is five seconds.
+- A successful focus session gives 50 coins.
+- Today's focus total uses the UTC date.
+- Subject progress uses completed tasks divided by all active tasks in the subject.
+- The notification target is the allowed mock HTTP sink.
+- JSON files are used for server storage.
+
+## Storage
+
+The frontend uses AsyncStorage. Phone and laptop have separate keys:
+
+```text
+alcovia:v1:phone:redux-state
+alcovia:v1:laptop:redux-state
 ```
 
-Inspect the notification and automation records:
+Express stores its state in JSON files inside `server/data`. This is suitable for the assignment and local testing. A real production deployment should use a database with unique constraints. A free hosting service may replace its local files during a redeploy.
 
-```bash
-curl -sS "$API_BASE_URL/api/notifications"
-```
-
-The response should contain one notification with the generated `SESSION_ID` and one automation delivery whose event has the same `sessionId`, whose status is `delivered`, and whose attempts value is `1`.
-
-## Left Out and Next Steps
-
-The core coding is complete. The remaining submission work is to give Express a public HTTPS URL, import and publish the workflow in n8n Cloud, put the resulting URLs in the two environment files, and record the demo video.
-
-If this prototype was taken further, the JSON files would be replaced with a database and unique constraints, the automation outbox would run in one worker, and the mock sink could be replaced with a real WhatsApp provider. Delta sync, three or more devices, random-order fuzz tests and two-way n8n actions are optional assignment extensions and are not included here.
-
-## Core Files
+## Main Files
 
 - `src/components/focus/FocusSessionLifecycle.tsx`
 - `src/features/focus/sessionTiming.ts`
 - `src/features/sync/operationTemplates.ts`
 - `src/features/sync/conflictResolution.ts`
 - `src/features/sync/syncClient.ts`
+- `server/src/services/syncService.ts`
 - `server/src/services/automationService.ts`
 - `n8n-workflow.json`
+
+## Not Included
+
+Real WhatsApp delivery and a real-phone Expo Go demo are not included. The mock notification sink and web clients meet the assignment requirements. The optional extensions that are still open are listed in `DECISIONS.md`.
