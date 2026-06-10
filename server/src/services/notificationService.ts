@@ -1,4 +1,4 @@
-import { notificationLogs } from "../data/serverState";
+import { notificationLogs, persistServerData } from "../data/serverState";
 import { NotificationLog } from "../types";
 import { createServerId } from "../utils/ids";
 
@@ -23,5 +23,6 @@ export function recordNotificationFromSink(payload: Partial<NotificationLog> & {
   };
 
   notificationLogs.unshift(notification);
+  persistServerData();
   return notification;
 }

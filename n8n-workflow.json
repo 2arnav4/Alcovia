@@ -5,7 +5,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "alcovia-focus-success",
-        "responseMode": "onReceived",
+        "responseMode": "lastNode",
         "options": {}
       },
       "id": "0ddf28aa-3cb7-4e42-98e3-8ff646823cf0",
@@ -20,10 +20,10 @@
     },
     {
       "parameters": {
-        "jsCode": "const payload = $json.body ?? $json;\nconst sessionId = payload.sessionId;\nif (!sessionId) {\n  throw new Error('sessionId is required');\n}\n\nconst store = $getWorkflowStaticData('global');\nstore.processedSessionIds ??= {};\n\nif (store.processedSessionIds[sessionId]) {\n  return [];\n}\n\nstore.processedSessionIds[sessionId] = payload.eventId ?? `focus-success:${sessionId}`;\nreturn [{ json: payload }];"
+        "jsCode": "const payload = $json.body ?? $json;\nconst sessionId = payload.sessionId;\nif (!sessionId) {\n  throw new Error('sessionId is required');\n}\n\nconst store = $getWorkflowStaticData('global');\nstore.deliveredSessionIds ??= {};\n\nif (store.deliveredSessionIds[sessionId]) {\n  return [];\n}\n\nreturn [{ json: payload }];"
       },
       "id": "1697145e-f1d5-4e9c-a739-7c3d908748fc",
-      "name": "Dedupe by Session ID",
+      "name": "Skip Delivered Sessions",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -58,6 +58,19 @@
         100,
         0
       ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $('Skip Delivered Sessions').item.json;\nconst store = $getWorkflowStaticData('global');\nstore.deliveredSessionIds ??= {};\nstore.deliveredSessionIds[payload.sessionId] = payload.eventId ?? `focus-success:${payload.sessionId}`;\nreturn [{ json: { delivered: true, eventId: payload.eventId, sessionId: payload.sessionId } }];"
+      },
+      "id": "723acdc2-fbbd-46ee-b4da-2a497a3ed93b",
+      "name": "Mark Session Delivered",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        0
+      ]
     }
   ],
   "pinData": {},
@@ -66,18 +79,29 @@
       "main": [
         [
           {
-            "node": "Dedupe by Session ID",
+            "node": "Skip Delivered Sessions",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Dedupe by Session ID": {
+    "Skip Delivered Sessions": {
       "main": [
         [
           {
             "node": "Send Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Notification": {
+      "main": [
+        [
+          {
+            "node": "Mark Session Delivered",
             "type": "main",
             "index": 0
           }

@@ -1,3 +1,5 @@
+import { readJsonFile, writeJsonFile } from "../data/filePersistence";
+
 interface FocusSuccessEvent {
   eventId: string;
   sessionId: string;
@@ -15,7 +17,14 @@ interface AutomationDelivery {
   error?: string;
 }
 
-const deliveries = new Map<string, AutomationDelivery>();
+const savedDeliveries = readJsonFile<AutomationDelivery[]>("automation-state.json") ?? [];
+const deliveries = new Map(
+  savedDeliveries.map((delivery) => [delivery.event.eventId, delivery])
+);
+
+function persistAutomationDeliveries(): void {
+  writeJsonFile("automation-state.json", Array.from(deliveries.values()));
+}
 
 export function queueFocusSuccessAutomation(input: {
   sessionId: string;
@@ -39,6 +48,7 @@ export function queueFocusSuccessAutomation(input: {
     status: "pending",
     attempts: 0
   });
+  persistAutomationDeliveries();
 }
 
 export async function flushAutomationDeliveries(): Promise<void> {
@@ -52,6 +62,7 @@ export async function flushAutomationDeliveries(): Promise<void> {
     if (!webhookUrl) {
       delivery.status = "waiting_for_configuration";
       delivery.error = "N8N_WEBHOOK_URL is not configured";
+      persistAutomationDeliveries();
       continue;
     }
 
@@ -71,9 +82,11 @@ export async function flushAutomationDeliveries(): Promise<void> {
 
       delivery.status = "delivered";
       delivery.error = undefined;
+      persistAutomationDeliveries();
     } catch (error) {
       delivery.status = "failed";
       delivery.error = error instanceof Error ? error.message : "Unknown automation error";
+      persistAutomationDeliveries();
     }
   }
 }
