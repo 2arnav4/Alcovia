@@ -8,6 +8,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { Badge } from "@/components/ui/Badge";
 import { SwitchControl } from "@/components/ui/SwitchControl";
 import { AppDispatch, RootState } from "@/store";
+import { cancelActiveSyncRequest } from "@/services/api";
 import { setIsOnline } from "@/store/slices/appSlice";
 import { setSyncStatus } from "@/store/slices/syncSlice";
 import { runSyncNow } from "@/store/thunks/syncThunks";
@@ -31,6 +32,8 @@ export function AppShell({ children }: PropsWithChildren) {
     dispatch(setSyncStatus(nextOnlineState ? "idle" : "offline")); // This is the sync status code which will trigger the sync logic to either start syncing or stop syncing based on the network state
     if (nextOnlineState) {
       void dispatch(runSyncNow());
+    } else {
+      cancelActiveSyncRequest();
     }
   }
 

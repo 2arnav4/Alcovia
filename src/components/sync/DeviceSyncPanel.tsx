@@ -16,6 +16,7 @@ import { resetNotificationState } from "@/store/slices/notificationSlice";
 import { deleteTask, resetSyllabusState, updateTaskStatus } from "@/store/slices/syllabusSlice";
 import { enqueueOperation, resetSyncState, setSyncStatus } from "@/store/slices/syncSlice";
 import { runSyncNow } from "@/store/thunks/syncThunks";
+import { cancelActiveSyncRequest } from "@/services/api";
 import { clearDeviceState } from "@/services/storage";
 import { loadPersistedDeviceState } from "@/services/devicePersistence";
 import { DeviceId } from "@/types";
@@ -107,6 +108,8 @@ export function DeviceSyncPanel() {
     dispatch(setSyncStatus(nextOnlineState ? "idle" : "offline"));
     if (nextOnlineState) {
       void dispatch(runSyncNow());
+    } else {
+      cancelActiveSyncRequest();
     }
   }
 
@@ -252,7 +255,11 @@ export function DeviceSyncPanel() {
               onPress={() => void dispatch(runSyncNow())}
             >
               <Text className="text-center font-bold text-white">
-                {isSyncing ? "Syncing..." : "Sync Now"}
+                {isSyncing
+                  ? "Syncing..."
+                  : sync.syncStatus === "retry_needed"
+                    ? "Retry Sync"
+                    : "Sync Now"}
               </Text>
             </Pressable>
             <Pressable className="flex-1 rounded-2xl bg-coral px-4 py-4" onPress={resetLocalState}>
@@ -268,6 +275,14 @@ export function DeviceSyncPanel() {
           <Summary label="Sync status" value={formatSyncStatus(sync.syncStatus)} />
           <Summary label="Server version" value={sync.lastKnownServerVersion.toString()} />
         </View>
+        {sync.lastSyncError ? (
+          <View className="mt-3 flex-row items-start gap-3 rounded-2xl bg-[#fff3e8] p-3">
+            <Ionicons color="#b45309" name="cloud-offline-outline" size={20} />
+            <Text className="flex-1 text-sm leading-5 text-orange-950">
+              {sync.lastSyncError} Queued: {sync.pendingOperations.length}.
+            </Text>
+          </View>
+        ) : null}
       </Card>
 
       <Card title="Both Devices">
@@ -395,9 +410,9 @@ function DemoButton({
 
 function formatSyncStatus(status: RootState["sync"]["syncStatus"]): string {
   const labels: Record<RootState["sync"]["syncStatus"], string> = {
-    error: "Error",
     idle: "Ready",
     offline: "Offline",
+    retry_needed: "Retry needed",
     synced: "Synced",
     syncing: "Syncing"
   };

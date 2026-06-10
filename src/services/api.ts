@@ -2,6 +2,7 @@ import { NotificationStateResponse, SyncRequest, SyncResponse } from "@/types";
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
 const SYNC_TIMEOUT_MS = 10_000;
+let activeSyncController: AbortController | null = null;
 
 export async function fetchServerState() {
   const response = await fetch(`${API_BASE_URL}/api/state`);
@@ -30,6 +31,7 @@ export async function fetchNotificationState(): Promise<NotificationStateRespons
 
 export async function postSync(request: SyncRequest): Promise<SyncResponse> {
   const controller = new AbortController();
+  activeSyncController = controller;
   const timeoutId = setTimeout(() => controller.abort(), SYNC_TIMEOUT_MS);
 
   let response: Response;
@@ -42,6 +44,9 @@ export async function postSync(request: SyncRequest): Promise<SyncResponse> {
     });
   } finally {
     clearTimeout(timeoutId);
+    if (activeSyncController === controller) {
+      activeSyncController = null;
+    }
   }
 
   if (!response.ok) {
@@ -49,4 +54,8 @@ export async function postSync(request: SyncRequest): Promise<SyncResponse> {
   }
 
   return response.json();
+}
+
+export function cancelActiveSyncRequest(): void {
+  activeSyncController?.abort();
 }

@@ -1,12 +1,13 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { SyncOperation } from "@/types";
 
-type SyncStatus = "idle" | "syncing" | "synced" | "offline" | "error";
+type SyncStatus = "idle" | "syncing" | "synced" | "offline" | "retry_needed";
 
 export interface SyncSliceState {
   pendingOperations: SyncOperation[];
   lastKnownServerVersion: number;
   syncStatus: SyncStatus;
+  lastSyncError: string | null;
   serverStatePreview: Record<string, unknown> | null;
 }
 
@@ -14,6 +15,7 @@ const initialState: SyncSliceState = {
   pendingOperations: [],
   lastKnownServerVersion: 0,
   syncStatus: "idle",
+  lastSyncError: null,
   serverStatePreview: null
 };
 
@@ -30,6 +32,9 @@ const syncSlice = createSlice({
     setSyncStatus(state, action: PayloadAction<SyncStatus>) {
       state.syncStatus = action.payload;
     },
+    setLastSyncError(state, action: PayloadAction<string | null>) {
+      state.lastSyncError = action.payload;
+    },
     setServerStatePreview(state, action: PayloadAction<Record<string, unknown> | null>) {
       state.serverStatePreview = action.payload;
     },
@@ -37,7 +42,13 @@ const syncSlice = createSlice({
       state.lastKnownServerVersion = action.payload;
     },
     hydrateSyncState(_state, action: PayloadAction<SyncSliceState>) {
-      return action.payload;
+      const savedStatus = action.payload.syncStatus as SyncStatus | "error";
+      return {
+        ...initialState,
+        ...action.payload,
+        lastSyncError: action.payload.lastSyncError ?? null,
+        syncStatus: savedStatus === "error" ? "retry_needed" : savedStatus
+      };
     },
     clearAcceptedOperations(state, action: PayloadAction<string[]>) {
       const acceptedOperationIds = new Set(action.payload);
@@ -60,6 +71,7 @@ export const {
   enqueueOperation,
   hydrateSyncState,
   resetSyncState,
+  setLastSyncError,
   setLastKnownServerVersion,
   setServerStatePreview,
   setSyncStatus

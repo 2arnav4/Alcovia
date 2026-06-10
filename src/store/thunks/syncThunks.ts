@@ -7,6 +7,7 @@ import { applyServerNotifications } from "@/store/slices/notificationSlice";
 import { applyServerSubjects } from "@/store/slices/syllabusSlice";
 import {
   clearAcceptedOperations,
+  setLastSyncError,
   setLastKnownServerVersion,
   setServerStatePreview,
   setSyncStatus
@@ -23,6 +24,7 @@ export const runSyncNow = createAsyncThunk<void, void, { state: RootState }>(
     }
 
     thunkApi.dispatch(setSyncStatus("syncing"));
+    thunkApi.dispatch(setLastSyncError(null));
 
     try {
       const response = await syncPendingOperations({
@@ -69,12 +71,31 @@ export const runSyncNow = createAsyncThunk<void, void, { state: RootState }>(
         })
       );
       thunkApi.dispatch(setSyncStatus("synced"));
+      thunkApi.dispatch(setLastSyncError(null));
     } catch (error) {
-      thunkApi.dispatch(setSyncStatus("error"));
-      throw error;
+      const isStillOnline = thunkApi.getState().app.isOnline;
+      thunkApi.dispatch(setSyncStatus(isStillOnline ? "retry_needed" : "offline"));
+      thunkApi.dispatch(
+        setLastSyncError(
+          isStillOnline
+            ? getSyncErrorMessage(error)
+            : "Sync stopped because this device went offline. Your changes are still saved."
+        )
+      );
     }
+  },
+  {
+    condition: (_argument, thunkApi) => thunkApi.getState().sync.syncStatus !== "syncing"
   }
 );
+
+function getSyncErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.name === "AbortError") {
+    return "Sync timed out or lost its connection. Your changes are still saved. Try again.";
+  }
+
+  return "Sync could not finish. Your changes are still saved. Try again.";
+}
 
 async function waitForNotifications(
   expectedSessionIds: Set<string>,
