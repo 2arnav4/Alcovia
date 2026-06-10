@@ -1,6 +1,10 @@
 import { NotificationLog, ServerStateSnapshot, SyncOperation } from "../types";
 import { readJsonFile, writeJsonFile } from "./filePersistence";
 
+function getFocusDate(isoDate = new Date().toISOString()): string {
+  return isoDate.slice(0, 10);
+}
+
 interface PersistedServerData {
   appliedOperationIds: string[];
   notificationLogs: NotificationLog[];
@@ -15,7 +19,8 @@ const initialServerState: ServerStateSnapshot = {
     studentId: "student_1",
     coins: 120,
     streak: 3,
-    todayFocusMinutes: 40
+    todayFocusMinutes: 40,
+    todayFocusDate: getFocusDate()
   },
   focusSessions: [],
   subjects: [
@@ -85,6 +90,8 @@ const savedServerData = readJsonFile<PersistedServerData>("server-state.json");
 
 export const serverState: ServerStateSnapshot =
   savedServerData?.serverState ?? initialServerState;
+serverState.student.todayFocusDate ??= getFocusDate();
+resetTodayFocusIfNeeded();
 export let serverVersion = savedServerData?.serverVersion ?? 0;
 export const appliedOperationIds = new Set(savedServerData?.appliedOperationIds ?? []);
 export const rewardedSessionIds = new Set(savedServerData?.rewardedSessionIds ?? []);
@@ -94,6 +101,14 @@ export const notificationLogs: NotificationLog[] = savedServerData?.notification
 export function bumpServerVersion(): number {
   serverVersion += 1;
   return serverVersion;
+}
+
+export function resetTodayFocusIfNeeded(): void {
+  const currentDate = getFocusDate();
+  if (serverState.student.todayFocusDate !== currentDate) {
+    serverState.student.todayFocusDate = currentDate;
+    serverState.student.todayFocusMinutes = 0;
+  }
 }
 
 export function persistServerData(): void {

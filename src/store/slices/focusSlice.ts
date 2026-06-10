@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { getFocusDate } from "@/features/focus/focusDate";
 import { FocusFailureReason, FocusSession, StudentState } from "@/types";
 
 export interface FocusSliceState {
@@ -8,6 +9,7 @@ export interface FocusSliceState {
   coins: number;
   streak: number;
   todayFocusMinutes: number;
+  todayFocusDate: string;
 }
 
 const initialState: FocusSliceState = {
@@ -16,7 +18,8 @@ const initialState: FocusSliceState = {
   focusSessions: [],
   coins: 120,
   streak: 3,
-  todayFocusMinutes: 40
+  todayFocusMinutes: 40,
+  todayFocusDate: getFocusDate()
 };
 
 const focusSlice = createSlice({
@@ -44,6 +47,11 @@ const focusSlice = createSlice({
       state.currentSession = null;
       state.coins += 50;
       state.streak += 1;
+      const completionDate = getFocusDate(action.payload);
+      if (state.todayFocusDate !== completionDate) {
+        state.todayFocusMinutes = 0;
+        state.todayFocusDate = completionDate;
+      }
       state.todayFocusMinutes += completedSession.targetMinutes;
     },
     failSession(
@@ -63,7 +71,13 @@ const focusSlice = createSlice({
       state.currentSession = null;
     },
     hydrateFocusState(_state, action: PayloadAction<FocusSliceState>) {
-      return action.payload;
+      const currentDate = getFocusDate();
+      const savedDate = action.payload.todayFocusDate ?? currentDate;
+      return {
+        ...action.payload,
+        todayFocusMinutes: savedDate === currentDate ? action.payload.todayFocusMinutes : 0,
+        todayFocusDate: currentDate
+      };
     },
     applyServerFocusState(
       state,
@@ -81,6 +95,7 @@ const focusSlice = createSlice({
       state.coins = action.payload.student.coins;
       state.streak = action.payload.student.streak;
       state.todayFocusMinutes = action.payload.student.todayFocusMinutes;
+      state.todayFocusDate = action.payload.student.todayFocusDate;
       if (serverCurrentSession && serverCurrentSession.status !== "running") {
         state.currentSession = null;
       }

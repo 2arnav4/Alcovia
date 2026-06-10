@@ -15,6 +15,7 @@ export interface StudentState {
   coins: number;
   streak: number;
   todayFocusMinutes: number;
+  todayFocusDate: string;
 }
 
 export interface StudyTask {

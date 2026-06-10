@@ -21,6 +21,7 @@ const savedDeliveries = readJsonFile<AutomationDelivery[]>("automation-state.jso
 const deliveries = new Map(
   savedDeliveries.map((delivery) => [delivery.event.eventId, delivery])
 );
+let activeFlush: Promise<void> | null = null;
 
 function persistAutomationDeliveries(): void {
   writeJsonFile("automation-state.json", Array.from(deliveries.values()));
@@ -52,16 +53,29 @@ export function queueFocusSuccessAutomation(input: {
 }
 
 export async function flushAutomationDeliveries(): Promise<void> {
+  if (!activeFlush) {
+    activeFlush = performAutomationFlush().finally(() => {
+      activeFlush = null;
+    });
+  }
+
+  return activeFlush;
+}
+
+async function performAutomationFlush(): Promise<void> {
   const webhookUrl = process.env.N8N_WEBHOOK_URL;
+  const notificationSinkUrl = process.env.NOTIFICATION_SINK_URL;
 
   for (const delivery of deliveries.values()) {
     if (delivery.status === "delivered") {
       continue;
     }
 
-    if (!webhookUrl) {
+    if (!webhookUrl || !notificationSinkUrl) {
       delivery.status = "waiting_for_configuration";
-      delivery.error = "N8N_WEBHOOK_URL is not configured";
+      delivery.error = !webhookUrl
+        ? "N8N_WEBHOOK_URL is not configured"
+        : "NOTIFICATION_SINK_URL is not configured";
       persistAutomationDeliveries();
       continue;
     }
@@ -73,7 +87,10 @@ export async function flushAutomationDeliveries(): Promise<void> {
       const response = await fetch(webhookUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(delivery.event)
+        body: JSON.stringify({
+          ...delivery.event,
+          notificationSinkUrl
+        })
       });
 
       if (!response.ok) {

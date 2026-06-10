@@ -1,10 +1,12 @@
 import { StudentState, Subject } from "@/types";
+import { getFocusDate } from "@/features/focus/focusDate";
 
 export const initialStudentState: StudentState = {
   studentId: "student_1",
   coins: 120,
   streak: 3,
-  todayFocusMinutes: 40
+  todayFocusMinutes: 40,
+  todayFocusDate: getFocusDate()
 };
 
 export const seedSubjects: Subject[] = [

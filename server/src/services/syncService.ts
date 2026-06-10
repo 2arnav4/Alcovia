@@ -4,6 +4,7 @@ import {
   notificationLogs,
   operationLog,
   persistServerData,
+  resetTodayFocusIfNeeded,
   rewardedSessionIds,
   serverState,
   serverVersion
@@ -23,7 +24,12 @@ const TASK_STATUS_RANK: Record<TaskStatus, number> = {
 
 const FOCUS_REWARD_COINS = 50;
 
+function getFocusDate(isoDate: string): string {
+  return isoDate.slice(0, 10);
+}
+
 export function getState() {
+  resetTodayFocusIfNeeded();
   return {
     serverVersion,
     state: serverState,
@@ -32,6 +38,7 @@ export function getState() {
 }
 
 export async function handleSync(request: SyncRequest): Promise<SyncResponse> {
+  resetTodayFocusIfNeeded();
   const acceptedOperationIds = new Set<string>();
 
   for (const operation of request.operations) {
@@ -192,8 +199,17 @@ function applyFocusSessionCompleted(operation: SyncOperation): void {
   if (!rewardedSessionIds.has(sessionId)) {
     rewardedSessionIds.add(sessionId);
     serverState.student.coins += FOCUS_REWARD_COINS;
-    serverState.student.todayFocusMinutes += targetMinutes;
     serverState.student.streak += 1;
+
+    const completionDate = getFocusDate(completedAtIso);
+    const currentDate = getFocusDate(new Date().toISOString());
+    if (completionDate === currentDate) {
+      if (serverState.student.todayFocusDate !== currentDate) {
+        serverState.student.todayFocusMinutes = 0;
+        serverState.student.todayFocusDate = currentDate;
+      }
+      serverState.student.todayFocusMinutes += targetMinutes;
+    }
   }
 
   queueFocusSuccessAutomation({
