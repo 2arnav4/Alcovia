@@ -112,7 +112,7 @@ function validateOperationPayload(
         return "focus start operation requires sessionId and startedAtIso";
       }
       if (!isTargetMinutes(session.targetMinutes)) {
-        return "focus start operation requires targetMinutes between 25 and 120";
+        return "focus start operation requires 25 to 120 minutes, or 1 minute when FOCUS_TEST_MODE is true";
       }
       if (session.deviceId !== operationDeviceId || session.status !== "running") {
         return "focus start session must match its operation device and be running";
@@ -129,7 +129,7 @@ function validateOperationPayload(
       }
       return isTargetMinutes(payload.targetMinutes)
         ? null
-        : "focus completion requires targetMinutes between 25 and 120";
+        : "focus completion requires 25 to 120 minutes, or 1 minute when FOCUS_TEST_MODE is true";
     case "focus_session_failed":
       if (
         !isText(payload.sessionId) ||
@@ -143,7 +143,7 @@ function validateOperationPayload(
       }
       return isTargetMinutes(payload.targetMinutes)
         ? null
-        : "focus failure requires targetMinutes between 25 and 120";
+        : "focus failure requires 25 to 120 minutes, or 1 minute when FOCUS_TEST_MODE is true";
   }
 }
 
