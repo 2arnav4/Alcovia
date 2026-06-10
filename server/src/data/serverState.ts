@@ -1,6 +1,16 @@
 import { NotificationLog, ServerStateSnapshot, SyncOperation } from "../types";
+import { readJsonFile, writeJsonFile } from "./filePersistence";
 
-export const serverState: ServerStateSnapshot = {
+interface PersistedServerData {
+  appliedOperationIds: string[];
+  notificationLogs: NotificationLog[];
+  operationLog: SyncOperation[];
+  rewardedSessionIds: string[];
+  serverState: ServerStateSnapshot;
+  serverVersion: number;
+}
+
+const initialServerState: ServerStateSnapshot = {
   student: {
     studentId: "student_1",
     coins: 120,
@@ -71,13 +81,28 @@ export const serverState: ServerStateSnapshot = {
   ]
 };
 
-export let serverVersion = 0;
-export const appliedOperationIds = new Set<string>();
-export const rewardedSessionIds = new Set<string>();
-export const operationLog: SyncOperation[] = [];
-export const notificationLogs: NotificationLog[] = [];
+const savedServerData = readJsonFile<PersistedServerData>("server-state.json");
+
+export const serverState: ServerStateSnapshot =
+  savedServerData?.serverState ?? initialServerState;
+export let serverVersion = savedServerData?.serverVersion ?? 0;
+export const appliedOperationIds = new Set(savedServerData?.appliedOperationIds ?? []);
+export const rewardedSessionIds = new Set(savedServerData?.rewardedSessionIds ?? []);
+export const operationLog: SyncOperation[] = savedServerData?.operationLog ?? [];
+export const notificationLogs: NotificationLog[] = savedServerData?.notificationLogs ?? [];
 
 export function bumpServerVersion(): number {
   serverVersion += 1;
   return serverVersion;
+}
+
+export function persistServerData(): void {
+  writeJsonFile("server-state.json", {
+    appliedOperationIds: Array.from(appliedOperationIds),
+    notificationLogs,
+    operationLog,
+    rewardedSessionIds: Array.from(rewardedSessionIds),
+    serverState,
+    serverVersion
+  } satisfies PersistedServerData);
 }

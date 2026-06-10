@@ -67,6 +67,18 @@ export interface SyncResponse {
   acceptedOperationIds: string[];
   state: ServerStateSnapshot;
   notifications: NotificationLog[];
+  automationDeliveries: AutomationDeliverySummary[];
+}
+
+export interface AutomationDeliverySummary {
+  event: {
+    eventId: string;
+    sessionId: string;
+    message: string;
+  };
+  status: "pending" | "delivered" | "waiting_for_configuration" | "failed";
+  attempts: number;
+  error?: string;
 }
 
 export interface NotificationLog {

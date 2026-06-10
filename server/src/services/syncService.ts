@@ -3,6 +3,7 @@ import {
   bumpServerVersion,
   notificationLogs,
   operationLog,
+  persistServerData,
   rewardedSessionIds,
   serverState,
   serverVersion
@@ -10,6 +11,7 @@ import {
 import { FocusSession, SyncOperation, SyncRequest, SyncResponse, TaskStatus } from "../types";
 import {
   flushAutomationDeliveries,
+  getAutomationDeliveries,
   queueFocusSuccessAutomation
 } from "./automationService";
 
@@ -43,15 +45,18 @@ export async function handleSync(request: SyncRequest): Promise<SyncResponse> {
     operationLog.push(operation);
     applyOperation(operation);
     bumpServerVersion();
+    persistServerData();
   }
 
   await flushAutomationDeliveries();
+  persistServerData();
 
   return {
     serverVersion,
     acceptedOperationIds: Array.from(acceptedOperationIds),
     state: serverState,
-    notifications: notificationLogs
+    notifications: notificationLogs,
+    automationDeliveries: getAutomationDeliveries()
   };
 }
 
@@ -110,27 +115,76 @@ function applyFocusSessionStarted(operation: SyncOperation): void {
     return;
   }
 
-  upsertFocusSession({
-    ...session,
-    status: "running"
-  });
+  const existingSession = serverState.focusSessions.find(
+    (candidate) => candidate.sessionId === session.sessionId
+  );
+  if (existingSession?.status === "success") {
+    return;
+  }
+
+  if (existingSession?.status === "failed") {
+    if (
+      existingSession.startedAtIso !== session.startedAtIso ||
+      existingSession.targetMinutes !== session.targetMinutes ||
+      existingSession.deviceId !== session.deviceId
+    ) {
+      return;
+    }
+  } else {
+    upsertFocusSession({
+      ...session,
+      status: "running"
+    });
+  }
+
+  const queuedCompletion = findLoggedFocusOperation(
+    "focus_session_completed",
+    session.sessionId
+  );
+  if (queuedCompletion) {
+    applyFocusSessionCompleted(queuedCompletion);
+  }
 }
 
 function applyFocusSessionCompleted(operation: SyncOperation): void {
   const sessionId = getStringPayload(operation, "sessionId");
   const targetMinutes = getNumberPayload(operation, "targetMinutes");
-  if (!sessionId || !targetMinutes) {
+  const startedAtIso = getStringPayload(operation, "startedAtIso");
+  const completedAtIso = getStringPayload(operation, "completedAtIso");
+  if (!sessionId || !targetMinutes || !startedAtIso || !completedAtIso) {
+    return;
+  }
+
+  const startedAt = Date.parse(startedAtIso);
+  const completedAt = Date.parse(completedAtIso);
+  const targetDurationMs = targetMinutes * 60_000;
+  if (
+    !Number.isFinite(startedAt) ||
+    !Number.isFinite(completedAt) ||
+    targetMinutes < 25 ||
+    targetMinutes > 120 ||
+    completedAt - startedAt < targetDurationMs
+  ) {
     return;
   }
 
   const existingSession = serverState.focusSessions.find((session) => session.sessionId === sessionId);
+  if (
+    !existingSession ||
+    existingSession.startedAtIso !== startedAtIso ||
+    existingSession.targetMinutes !== targetMinutes ||
+    existingSession.deviceId !== operation.deviceId
+  ) {
+    return;
+  }
+
   const completedSession: FocusSession = {
     sessionId,
     deviceId: operation.deviceId,
     targetMinutes,
     status: "success",
-    startedAtIso: existingSession?.startedAtIso ?? new Date().toISOString(),
-    completedAtIso: new Date().toISOString()
+    startedAtIso,
+    completedAtIso
   };
 
   upsertFocusSession(completedSession);
@@ -149,9 +203,26 @@ function applyFocusSessionCompleted(operation: SyncOperation): void {
   });
 }
 
+function findLoggedFocusOperation(
+  type: SyncOperation["type"],
+  sessionId: string
+): SyncOperation | null {
+  for (let index = operationLog.length - 1; index >= 0; index -= 1) {
+    const operation = operationLog[index];
+    if (operation.type === type && getStringPayload(operation, "sessionId") === sessionId) {
+      return operation;
+    }
+  }
+
+  return null;
+}
+
 function applyFocusSessionFailed(operation: SyncOperation): void {
   const sessionId = getStringPayload(operation, "sessionId");
   const reason = getStringPayload(operation, "reason");
+  const targetMinutes = getNumberPayload(operation, "targetMinutes");
+  const startedAtIso = getStringPayload(operation, "startedAtIso");
+  const failedAtIso = getStringPayload(operation, "failedAtIso");
   if (!sessionId) {
     return;
   }
@@ -164,10 +235,10 @@ function applyFocusSessionFailed(operation: SyncOperation): void {
   upsertFocusSession({
     sessionId,
     deviceId: operation.deviceId,
-    targetMinutes: existingSession?.targetMinutes ?? 0,
+    targetMinutes: existingSession?.targetMinutes ?? targetMinutes ?? 0,
     status: "failed",
-    startedAtIso: existingSession?.startedAtIso ?? new Date().toISOString(),
-    failedAtIso: new Date().toISOString(),
+    startedAtIso: existingSession?.startedAtIso ?? startedAtIso ?? new Date().toISOString(),
+    failedAtIso: failedAtIso ?? new Date().toISOString(),
     failureReason: reason === "app_switch" ? "app_switch" : "give_up"
   });
 }
