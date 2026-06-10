@@ -10,6 +10,7 @@ import { SwitchControl } from "@/components/ui/SwitchControl";
 import { AppDispatch, RootState } from "@/store";
 import { setIsOnline } from "@/store/slices/appSlice";
 import { setSyncStatus } from "@/store/slices/syncSlice";
+import { runSyncNow } from "@/store/thunks/syncThunks";
 
 const navItems = [
   { href: "/", icon: "home", label: "Home" },
@@ -28,6 +29,9 @@ export function AppShell({ children }: PropsWithChildren) {
     const nextOnlineState = !isOnline;
     dispatch(setIsOnline(nextOnlineState)); // This is the online/offline state code which will synchronize all of the pages 
     dispatch(setSyncStatus(nextOnlineState ? "idle" : "offline")); // This is the sync status code which will trigger the sync logic to either start syncing or stop syncing based on the network state
+    if (nextOnlineState) {
+      void dispatch(runSyncNow());
+    }
   }
 
   return (

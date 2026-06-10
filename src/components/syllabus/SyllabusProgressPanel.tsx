@@ -85,7 +85,7 @@ export function SyllabusProgressPanel() {
                     <ProgressBar value={chapterProgress} colorClassName="bg-mintDark" />
 
                     <View className="mt-3 gap-2">
-                      {chapter.tasks.map((task) => (
+                      {chapter.tasks.filter((task) => !task.deleted).map((task) => (
                         <View key={task.id} className="rounded-2xl bg-white p-3">
                           <Text className="font-semibold text-ink">{task.title}</Text>
                           <View className="mt-3 flex-row gap-2">

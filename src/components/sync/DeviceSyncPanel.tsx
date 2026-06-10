@@ -1,21 +1,34 @@
-import { PropsWithChildren } from "react";
+import { PropsWithChildren, useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, Text, View } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
 import { OperationList } from "@/components/sync/OperationList";
 import { Card } from "@/components/ui/Card";
 import { Toggle } from "@/components/ui/Toggle";
+import {
+  createTaskDeletedOperation,
+  createTaskStatusChangedOperation
+} from "@/features/sync/operationTemplates";
 import { AppDispatch, RootState } from "@/store";
 import { resetFocusState } from "@/store/slices/focusSlice";
 import { setIsOnline, setSelectedDeviceId } from "@/store/slices/appSlice";
 import { resetNotificationState } from "@/store/slices/notificationSlice";
-import { resetSyllabusState } from "@/store/slices/syllabusSlice";
-import { resetSyncState, setSyncStatus } from "@/store/slices/syncSlice";
+import { deleteTask, resetSyllabusState, updateTaskStatus } from "@/store/slices/syllabusSlice";
+import { enqueueOperation, resetSyncState, setSyncStatus } from "@/store/slices/syncSlice";
 import { runSyncNow } from "@/store/thunks/syncThunks";
 import { clearDeviceState } from "@/services/storage";
+import { loadPersistedDeviceState } from "@/services/devicePersistence";
 import { DeviceId } from "@/types";
 
 const DEVICES: DeviceId[] = ["phone", "laptop"];
+const CONFLICT_TASK_ID = "math-algebra-word";
+
+interface DeviceSnapshot {
+  coins: number;
+  focusMinutes: number;
+  pendingOperations: number;
+  streak: number;
+}
 
 export function DeviceSyncPanel() {
   const dispatch = useDispatch<AppDispatch>();
@@ -24,6 +37,49 @@ export function DeviceSyncPanel() {
   const subjects = useSelector((state: RootState) => state.syllabus.subjects);
   const sync = useSelector((state: RootState) => state.sync);
   const isSyncing = sync.syncStatus === "syncing";
+  const [storedSnapshots, setStoredSnapshots] = useState<
+    Partial<Record<DeviceId, DeviceSnapshot>>
+  >({});
+  const conflictTask = subjects
+    .flatMap((subject) => subject.chapters)
+    .flatMap((chapter) => chapter.tasks)
+    .find((task) => task.id === CONFLICT_TASK_ID);
+
+  useEffect(() => {
+    let active = true;
+
+    Promise.all(
+      DEVICES.filter((deviceId) => deviceId !== app.selectedDeviceId).map(async (deviceId) => {
+        const savedState = await loadPersistedDeviceState(deviceId);
+        return [
+          deviceId,
+          savedState
+            ? {
+                coins: savedState.focus.coins,
+                focusMinutes: savedState.focus.todayFocusMinutes,
+                pendingOperations: savedState.sync.pendingOperations.length,
+                streak: savedState.focus.streak
+              }
+            : undefined
+        ] as const;
+      })
+    ).then((entries) => {
+      if (active) {
+        setStoredSnapshots(Object.fromEntries(entries));
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [app.selectedDeviceId, focus.coins, focus.streak, focus.todayFocusMinutes, sync.pendingOperations.length]);
+
+  const currentSnapshot: DeviceSnapshot = {
+    coins: focus.coins,
+    focusMinutes: focus.todayFocusMinutes,
+    pendingOperations: sync.pendingOperations.length,
+    streak: focus.streak
+  };
 
   function resetLocalState() {
     void clearDeviceState(app.selectedDeviceId);
@@ -37,6 +93,45 @@ export function DeviceSyncPanel() {
     const nextOnlineState = !app.isOnline;
     dispatch(setIsOnline(nextOnlineState));
     dispatch(setSyncStatus(nextOnlineState ? "idle" : "offline"));
+    if (nextOnlineState) {
+      void dispatch(runSyncNow());
+    }
+  }
+
+  function queueConflictStatus(status: "in_progress" | "done") {
+    dispatch(updateTaskStatus({ taskId: CONFLICT_TASK_ID, status }));
+    dispatch(
+      enqueueOperation(
+        createTaskStatusChangedOperation({
+          deviceId: app.selectedDeviceId,
+          localSequence: sync.pendingOperations.length + 1,
+          status,
+          studentId: app.studentId,
+          taskId: CONFLICT_TASK_ID
+        })
+      )
+    );
+  }
+
+  function queueConflictDelete() {
+    dispatch(deleteTask(CONFLICT_TASK_ID));
+    dispatch(
+      enqueueOperation(
+        createTaskDeletedOperation({
+          deviceId: app.selectedDeviceId,
+          localSequence: sync.pendingOperations.length + 1,
+          studentId: app.studentId,
+          taskId: CONFLICT_TASK_ID
+        })
+      )
+    );
+  }
+
+  function replayLastOperation() {
+    const lastOperation = sync.pendingOperations.at(-1);
+    if (lastOperation) {
+      dispatch(enqueueOperation(lastOperation));
+    }
   }
 
   return (
@@ -51,6 +146,31 @@ export function DeviceSyncPanel() {
             <Text className="mt-1 text-sm leading-5 text-muted">
               Switch between phone and laptop, go offline, make edits, and sync later.
             </Text>
+          </View>
+        </View>
+      </Card>
+
+      <Card title="Conflict Demo">
+        <View className="gap-3">
+          <Text className="text-sm leading-5 text-muted">
+            Use Word problems on both devices while offline. Done beats In progress, delete beats
+            an edit, and replaying the same operation is ignored by Express.
+          </Text>
+          <View className="rounded-2xl bg-[#faf9ff] p-3">
+            <Text className="text-xs font-bold uppercase text-muted">Word problems</Text>
+            <Text className="mt-1 font-bold capitalize text-ink">
+              {conflictTask?.deleted ? "Deleted" : conflictTask?.status.replaceAll("_", " ")}
+            </Text>
+          </View>
+          <View className="flex-row flex-wrap gap-2">
+            <DemoButton label="Set In Progress" onPress={() => queueConflictStatus("in_progress")} />
+            <DemoButton label="Set Done" onPress={() => queueConflictStatus("done")} />
+            <DemoButton label="Delete Task" onPress={queueConflictDelete} tone="danger" />
+            <DemoButton
+              disabled={sync.pendingOperations.length === 0}
+              label="Replay Last"
+              onPress={replayLastOperation}
+            />
           </View>
         </View>
       </Card>
@@ -115,6 +235,21 @@ export function DeviceSyncPanel() {
         </View>
       </Card>
 
+      <Card title="Both Devices">
+        <View className="gap-3 md:flex-row">
+          {DEVICES.map((deviceId) => (
+            <DeviceStateSummary
+              key={deviceId}
+              deviceId={deviceId}
+              selected={deviceId === app.selectedDeviceId}
+              snapshot={
+                deviceId === app.selectedDeviceId ? currentSnapshot : storedSnapshots[deviceId]
+              }
+            />
+          ))}
+        </View>
+      </Card>
+
       <Section title="Pending changes">
         <OperationList operations={sync.pendingOperations} />
       </Section>
@@ -138,6 +273,14 @@ export function DeviceSyncPanel() {
               label="Notifications"
               value={String(sync.serverStatePreview.notifications ?? 0)}
             />
+            <Summary
+              label="Automation status"
+              value={String(sync.serverStatePreview.automationStatus ?? "No event yet")}
+            />
+            <Summary
+              label="Automation attempts"
+              value={String(sync.serverStatePreview.automationAttempts ?? 0)}
+            />
           </View>
         ) : (
           <Text className="text-sm leading-5 text-muted">
@@ -146,6 +289,67 @@ export function DeviceSyncPanel() {
         )}
       </Section>
     </View>
+  );
+}
+
+function DeviceStateSummary({
+  deviceId,
+  selected,
+  snapshot
+}: {
+  deviceId: DeviceId;
+  selected: boolean;
+  snapshot?: DeviceSnapshot;
+}) {
+  return (
+    <View className={`flex-1 rounded-2xl p-4 ${selected ? "bg-violetSoft" : "bg-[#faf9ff]"}`}>
+      <View className="flex-row items-center justify-between">
+        <Text className="font-bold capitalize text-ink">{deviceId}</Text>
+        <Text className="text-xs font-bold uppercase text-violetDeep">
+          {selected ? "Selected" : "Stored"}
+        </Text>
+      </View>
+      {snapshot ? (
+        <View className="mt-3 flex-row flex-wrap gap-x-4 gap-y-2">
+          <Text className="text-sm text-muted">Coins {snapshot.coins}</Text>
+          <Text className="text-sm text-muted">Streak {snapshot.streak}</Text>
+          <Text className="text-sm text-muted">Today {snapshot.focusMinutes} min</Text>
+          <Text className="text-sm text-muted">Queued {snapshot.pendingOperations}</Text>
+        </View>
+      ) : (
+        <Text className="mt-3 text-sm text-muted">No saved state yet</Text>
+      )}
+    </View>
+  );
+}
+
+function DemoButton({
+  disabled = false,
+  label,
+  onPress,
+  tone = "normal"
+}: {
+  disabled?: boolean;
+  label: string;
+  onPress: () => void;
+  tone?: "danger" | "normal";
+}) {
+  return (
+    <Pressable
+      className={`min-w-[46%] flex-1 rounded-2xl px-3 py-3 ${
+        disabled ? "bg-lavender" : tone === "danger" ? "bg-coral" : "bg-violetSoft"
+      }`}
+      disabled={disabled}
+      onPress={onPress}
+    >
+      <Text
+        className={`text-center text-sm font-bold ${
+          tone === "danger" ? "text-orange-950" : "text-violetDeep"
+        }`}
+      >
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 

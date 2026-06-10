@@ -17,10 +17,13 @@ export function getChapterProgress(chapter: Chapter): number {
 }
 
 export function getSubjectProgress(subject: Subject): number {
-  if (subject.chapters.length === 0) {
+  const activeTasks = subject.chapters.flatMap((chapter) =>
+    chapter.tasks.filter((task) => !task.deleted)
+  );
+  if (activeTasks.length === 0) {
     return 0;
   }
 
-  const total = subject.chapters.reduce((sum, chapter) => sum + getChapterProgress(chapter), 0);
-  return Math.round(total / subject.chapters.length);
+  const completedTasks = activeTasks.filter((task) => task.status === "done").length;
+  return Math.round((completedTasks / activeTasks.length) * 100);
 }

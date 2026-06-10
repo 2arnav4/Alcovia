@@ -29,7 +29,7 @@ const focusSlice = createSlice({
     startSession(state, action: PayloadAction<FocusSession>) {
       state.currentSession = action.payload;
     },
-    completeSession(state) {
+    completeSession(state, action: PayloadAction<string>) {
       if (!state.currentSession) {
         return;
       }
@@ -37,7 +37,7 @@ const focusSlice = createSlice({
       const completedSession: FocusSession = {
         ...state.currentSession,
         status: "success",
-        completedAtIso: new Date().toISOString()
+        completedAtIso: action.payload
       };
 
       state.focusSessions.unshift(completedSession);
@@ -46,7 +46,10 @@ const focusSlice = createSlice({
       state.streak += 1;
       state.todayFocusMinutes += completedSession.targetMinutes;
     },
-    failSession(state, action: PayloadAction<FocusFailureReason>) {
+    failSession(
+      state,
+      action: PayloadAction<{ failedAtIso: string; reason: FocusFailureReason }>
+    ) {
       if (!state.currentSession) {
         return;
       }
@@ -54,8 +57,8 @@ const focusSlice = createSlice({
       state.focusSessions.unshift({
         ...state.currentSession,
         status: "failed",
-        failedAtIso: new Date().toISOString(),
-        failureReason: action.payload
+        failedAtIso: action.payload.failedAtIso,
+        failureReason: action.payload.reason
       });
       state.currentSession = null;
     },

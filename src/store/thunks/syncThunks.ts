@@ -38,6 +38,8 @@ export const runSyncNow = createAsyncThunk<void, void, { state: RootState }>(
       thunkApi.dispatch(applyServerNotifications(response.notifications));
       thunkApi.dispatch(
         setServerStatePreview({
+          automationAttempts: response.automationDeliveries[0]?.attempts ?? 0,
+          automationStatus: response.automationDeliveries[0]?.status ?? "No event yet",
           focusSessions: response.state.focusSessions.length,
           notifications: response.notifications.length,
           serverVersion: response.serverVersion,

@@ -14,6 +14,17 @@ const syllabusSlice = createSlice({
   name: "syllabus",
   initialState,
   reducers: {
+    deleteTask(state, action: PayloadAction<string>) {
+      for (const subject of state.subjects) {
+        for (const chapter of subject.chapters) {
+          const task = chapter.tasks.find((candidate) => candidate.id === action.payload);
+          if (task) {
+            task.deleted = true;
+            return;
+          }
+        }
+      }
+    },
     updateTaskStatus(
       state,
       action: PayloadAction<{ taskId: string; status: TaskStatus }>
@@ -40,6 +51,11 @@ const syllabusSlice = createSlice({
   }
 });
 
-export const { applyServerSubjects, hydrateSyllabusState, resetSyllabusState, updateTaskStatus } =
-  syllabusSlice.actions;
+export const {
+  applyServerSubjects,
+  deleteTask,
+  hydrateSyllabusState,
+  resetSyllabusState,
+  updateTaskStatus
+} = syllabusSlice.actions;
 export default syllabusSlice.reducer;

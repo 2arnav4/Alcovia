@@ -6,7 +6,10 @@ import {
   createFocusSessionCompletedOperation,
   createFocusSessionFailedOperation
 } from "@/features/sync/operationTemplates";
-import { FOCUS_AWAY_GRACE_MS, getRemainingSeconds } from "@/features/focus/sessionTiming";
+import {
+  getRemainingSeconds,
+  hasExceededAwayGracePeriod
+} from "@/features/focus/sessionTiming";
 import { AppDispatch, RootState } from "@/store";
 import { completeSession, failSession } from "@/store/slices/focusSlice";
 import { enqueueOperation } from "@/store/slices/syncSlice";
@@ -26,10 +29,10 @@ export function FocusSessionLifecycle() {
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
-      appStateRef.current = nextState;
-      if (nextState === "active" && pathname === "/focus") {
-        awayStartedAtRef.current = null;
+      if (nextState !== "active" && appStateRef.current === "active") {
+        awayStartedAtRef.current ??= Date.now();
       }
+      appStateRef.current = nextState;
     });
 
     return () => subscription.remove();
@@ -50,13 +53,16 @@ export function FocusSessionLifecycle() {
       }
 
       finalizedSessionIdsRef.current.add(sessionId);
-      dispatch(completeSession());
+      const completedAtIso = new Date().toISOString();
+      dispatch(completeSession(completedAtIso));
       dispatch(
         enqueueOperation(
           createFocusSessionCompletedOperation({
             deviceId: session.deviceId,
+            completedAtIso,
             localSequence: pendingOperationCount + 1,
             sessionId,
+            startedAtIso: session.startedAtIso,
             studentId,
             targetMinutes: session.targetMinutes
           })
@@ -70,15 +76,19 @@ export function FocusSessionLifecycle() {
       }
 
       finalizedSessionIdsRef.current.add(sessionId);
-      dispatch(failSession(reason));
+      const failedAtIso = new Date().toISOString();
+      dispatch(failSession({ failedAtIso, reason }));
       dispatch(
         enqueueOperation(
           createFocusSessionFailedOperation({
             deviceId: session.deviceId,
+            failedAtIso,
             localSequence: pendingOperationCount + 1,
             reason,
             sessionId,
-            studentId
+            startedAtIso: session.startedAtIso,
+            studentId,
+            targetMinutes: session.targetMinutes
           })
         )
       );
@@ -86,20 +96,25 @@ export function FocusSessionLifecycle() {
 
     function checkSession() {
       const now = Date.now();
+      const isAway = appStateRef.current !== "active" || pathname !== "/focus";
+      if (isAway) {
+        awayStartedAtRef.current ??= now;
+        if (hasExceededAwayGracePeriod(awayStartedAtRef.current, now)) {
+          finalizeFailure("app_switch");
+        }
+        return;
+      }
+
+      if (awayStartedAtRef.current !== null) {
+        if (hasExceededAwayGracePeriod(awayStartedAtRef.current, now)) {
+          finalizeFailure("app_switch");
+          return;
+        }
+        awayStartedAtRef.current = null;
+      }
+
       if (getRemainingSeconds(session, now) === 0) {
         finalizeSuccess();
-        return;
-      }
-
-      const isAway = appStateRef.current !== "active" || pathname !== "/focus";
-      if (!isAway) {
-        awayStartedAtRef.current = null;
-        return;
-      }
-
-      awayStartedAtRef.current ??= now;
-      if (now - awayStartedAtRef.current >= FOCUS_AWAY_GRACE_MS) {
-        finalizeFailure("app_switch");
       }
     }
 

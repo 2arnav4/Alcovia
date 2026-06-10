@@ -2,6 +2,10 @@ import { FocusSession } from "@/types";
 
 export const FOCUS_AWAY_GRACE_MS = 5_000;       // MAIN FEATURE 1 : This is the grace period for which if the user leaves the focus session page and comes back within this time, we won't fail the session. This allows users to accidentally navigate away from the page without being penalized.
 
+export function hasExceededAwayGracePeriod(awayStartedAt: number, now: number): boolean {
+  return now - awayStartedAt >= FOCUS_AWAY_GRACE_MS;
+}
+
 export function getSessionEndTime(session: FocusSession): number {
   return new Date(session.startedAtIso).getTime() + session.targetMinutes * 60_000;
 }

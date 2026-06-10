@@ -23,8 +23,8 @@ export function OperationList({ operations }: OperationListProps) {
 
   return (
     <View className="gap-2">
-      {operations.slice(0, 5).map((operation) => (
-        <View key={operation.operationId} className="flex-row items-center gap-3 rounded-3xl bg-[#faf9ff] p-3">
+      {operations.slice(0, 5).map((operation, index) => (
+        <View key={`${operation.operationId}-${index}`} className="flex-row items-center gap-3 rounded-3xl bg-[#faf9ff] p-3">
           <View className="h-10 w-10 items-center justify-center rounded-2xl bg-violetSoft">
             <Ionicons color="#4b2fc9" name="cloud-upload" size={19} />
           </View>
