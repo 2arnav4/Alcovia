@@ -1,5 +1,6 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { syncPendingOperations } from "@/features/sync/syncClient";
+import { fetchNotificationState } from "@/services/api";
 import { RootState } from "@/store";
 import { applyServerFocusState } from "@/store/slices/focusSlice";
 import { applyServerNotifications } from "@/store/slices/notificationSlice";
@@ -35,13 +36,33 @@ export const runSyncNow = createAsyncThunk<void, void, { state: RootState }>(
       thunkApi.dispatch(setLastKnownServerVersion(response.serverVersion));
       thunkApi.dispatch(applyServerFocusState(response.state));
       thunkApi.dispatch(applyServerSubjects(response.state.subjects));
-      thunkApi.dispatch(applyServerNotifications(response.notifications));
+      let notificationState = {
+        notifications: response.notifications,
+        automationDeliveries: response.automationDeliveries
+      };
+
+      const completedSessionIds = new Set(
+        state.sync.pendingOperations
+          .filter((operation) => operation.type === "focus_session_completed")
+          .map((operation) => operation.payload.sessionId)
+          .filter((sessionId): sessionId is string => typeof sessionId === "string")
+      );
+
+      if (completedSessionIds.size > 0) {
+        notificationState = await waitForNotifications(completedSessionIds, notificationState);
+      }
+
+      const relevantDelivery = notificationState.automationDeliveries.find((delivery) =>
+        completedSessionIds.has(delivery.event.sessionId)
+      ) ?? notificationState.automationDeliveries.at(-1);
+
+      thunkApi.dispatch(applyServerNotifications(notificationState.notifications));
       thunkApi.dispatch(
         setServerStatePreview({
-          automationAttempts: response.automationDeliveries[0]?.attempts ?? 0,
-          automationStatus: response.automationDeliveries[0]?.status ?? "No event yet",
+          automationAttempts: relevantDelivery?.attempts ?? 0,
+          automationStatus: relevantDelivery?.status ?? "No event yet",
           focusSessions: response.state.focusSessions.length,
-          notifications: response.notifications.length,
+          notifications: notificationState.notifications.length,
           serverVersion: response.serverVersion,
           student: response.state.student,
           subjects: response.state.subjects.length
@@ -54,3 +75,28 @@ export const runSyncNow = createAsyncThunk<void, void, { state: RootState }>(
     }
   }
 );
+
+async function waitForNotifications(
+  expectedSessionIds: Set<string>,
+  initialState: Awaited<ReturnType<typeof fetchNotificationState>>
+) {
+  let notificationState = initialState;
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const receivedSessionIds = new Set(
+      notificationState.notifications.map((notification) => notification.sessionId)
+    );
+    if (Array.from(expectedSessionIds).every((sessionId) => receivedSessionIds.has(sessionId))) {
+      return notificationState;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 750));
+    try {
+      notificationState = await fetchNotificationState();
+    } catch {
+      return notificationState;
+    }
+  }
+
+  return notificationState;
+}

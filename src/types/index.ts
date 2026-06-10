@@ -93,3 +93,8 @@ export interface NotificationLog {
   message: string;
   createdAtIso: string;
 }
+
+export interface NotificationStateResponse {
+  notifications: NotificationLog[];
+  automationDeliveries: AutomationDeliverySummary[];
+}
