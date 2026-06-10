@@ -40,13 +40,17 @@ export function DeviceSyncPanel() {
   const [storedSnapshots, setStoredSnapshots] = useState<
     Partial<Record<DeviceId, DeviceSnapshot>>
   >({});
-  const conflictTask = subjects
+  const availableTasks = subjects
     .flatMap((subject) => subject.chapters)
     .flatMap((chapter) => chapter.tasks)
-    .find((task) => task.id === CONFLICT_TASK_ID);
+    .filter((task) => !task.deleted);
+  const conflictTask =
+    availableTasks.find((task) => task.id === CONFLICT_TASK_ID) ?? availableTasks[0];
+  const [isLoadingSnapshots, setIsLoadingSnapshots] = useState(true);
 
   useEffect(() => {
     let active = true;
+    setIsLoadingSnapshots(true);
 
     Promise.all(
       DEVICES.filter((deviceId) => deviceId !== app.selectedDeviceId).map(async (deviceId) => {
@@ -66,6 +70,14 @@ export function DeviceSyncPanel() {
     ).then((entries) => {
       if (active) {
         setStoredSnapshots(Object.fromEntries(entries));
+      }
+    }).catch(() => {
+      if (active) {
+        setStoredSnapshots({});
+      }
+    }).finally(() => {
+      if (active) {
+        setIsLoadingSnapshots(false);
       }
     });
 
@@ -99,7 +111,11 @@ export function DeviceSyncPanel() {
   }
 
   function queueConflictStatus(status: "in_progress" | "done") {
-    dispatch(updateTaskStatus({ taskId: CONFLICT_TASK_ID, status }));
+    if (!conflictTask) {
+      return;
+    }
+
+    dispatch(updateTaskStatus({ taskId: conflictTask.id, status }));
     dispatch(
       enqueueOperation(
         createTaskStatusChangedOperation({
@@ -107,21 +123,25 @@ export function DeviceSyncPanel() {
           localSequence: sync.pendingOperations.length + 1,
           status,
           studentId: app.studentId,
-          taskId: CONFLICT_TASK_ID
+          taskId: conflictTask.id
         })
       )
     );
   }
 
   function queueConflictDelete() {
-    dispatch(deleteTask(CONFLICT_TASK_ID));
+    if (!conflictTask) {
+      return;
+    }
+
+    dispatch(deleteTask(conflictTask.id));
     dispatch(
       enqueueOperation(
         createTaskDeletedOperation({
           deviceId: app.selectedDeviceId,
           localSequence: sync.pendingOperations.length + 1,
           studentId: app.studentId,
-          taskId: CONFLICT_TASK_ID
+          taskId: conflictTask.id
         })
       )
     );
@@ -153,19 +173,34 @@ export function DeviceSyncPanel() {
       <Card title="Conflict Demo">
         <View className="gap-3">
           <Text className="text-sm leading-5 text-muted">
-            Use Word problems on both devices while offline. Done beats In progress, delete beats
-            an edit, and replaying the same operation is ignored by Express.
+            Use the task shown below on both devices while offline. Done beats In progress, delete
+            beats an edit, and replaying the same operation is ignored by Express.
           </Text>
           <View className="rounded-2xl bg-[#faf9ff] p-3">
-            <Text className="text-xs font-bold uppercase text-muted">Word problems</Text>
+            <Text className="text-xs font-bold uppercase text-muted">
+              {conflictTask?.title ?? "No active task"}
+            </Text>
             <Text className="mt-1 font-bold capitalize text-ink">
-              {conflictTask?.deleted ? "Deleted" : conflictTask?.status.replaceAll("_", " ")}
+              {conflictTask ? conflictTask.status.replaceAll("_", " ") : "Unavailable"}
             </Text>
           </View>
           <View className="flex-row flex-wrap gap-2">
-            <DemoButton label="Set In Progress" onPress={() => queueConflictStatus("in_progress")} />
-            <DemoButton label="Set Done" onPress={() => queueConflictStatus("done")} />
-            <DemoButton label="Delete Task" onPress={queueConflictDelete} tone="danger" />
+            <DemoButton
+              disabled={!conflictTask}
+              label="Set In Progress"
+              onPress={() => queueConflictStatus("in_progress")}
+            />
+            <DemoButton
+              disabled={!conflictTask}
+              label="Set Done"
+              onPress={() => queueConflictStatus("done")}
+            />
+            <DemoButton
+              disabled={!conflictTask}
+              label="Delete Task"
+              onPress={queueConflictDelete}
+              tone="danger"
+            />
             <DemoButton
               disabled={sync.pendingOperations.length === 0}
               label="Replay Last"
@@ -245,6 +280,7 @@ export function DeviceSyncPanel() {
               snapshot={
                 deviceId === app.selectedDeviceId ? currentSnapshot : storedSnapshots[deviceId]
               }
+              loading={deviceId !== app.selectedDeviceId && isLoadingSnapshots}
             />
           ))}
         </View>
@@ -294,10 +330,12 @@ export function DeviceSyncPanel() {
 
 function DeviceStateSummary({
   deviceId,
+  loading,
   selected,
   snapshot
 }: {
   deviceId: DeviceId;
+  loading: boolean;
   selected: boolean;
   snapshot?: DeviceSnapshot;
 }) {
@@ -309,7 +347,9 @@ function DeviceStateSummary({
           {selected ? "Selected" : "Stored"}
         </Text>
       </View>
-      {snapshot ? (
+      {loading ? (
+        <Text className="mt-3 text-sm text-muted">Loading saved state...</Text>
+      ) : snapshot ? (
         <View className="mt-3 flex-row flex-wrap gap-x-4 gap-y-2">
           <Text className="text-sm text-muted">Coins {snapshot.coins}</Text>
           <Text className="text-sm text-muted">Streak {snapshot.streak}</Text>
