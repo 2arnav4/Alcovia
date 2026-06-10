@@ -5,3 +5,5 @@ dist
 .env.*
 !server/.env.example
 npm-debug.log*
+server/data/*.json
+server/data/*.tmp

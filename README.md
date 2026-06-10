@@ -50,19 +50,20 @@ The Expo app runs at `http://localhost:8081` on web. The backend defaults to `ht
 - Clean Sync Lab with device selector, online/offline toggle, sync button, reset, and readable pending operation list
 - Express APIs for health, state, sync, and notifications
 - Express-to-n8n focus-success webhook with a stable event and session id
-- n8n session-id deduplication before notification delivery
+- n8n session-id deduplication after confirmed notification delivery
 - Mock notification sink at `POST /api/notifications/sink`
 
-## Remaining Work
+## Manual Setup Left
 
-- Recorded two-device convergence walkthrough
+- Import and activate `n8n-workflow.json` in the n8n instance used for the demo
+- Record the two-device walkthrough if a video submission is needed
 
 ## Constraint Choices
 
 - Frontend: TypeScript with React Native and Expo Router
 - Backend: TypeScript with Express
 - On-device storage: AsyncStorage
-- Server storage: in-memory collections, which the assignment explicitly permits
+- Server storage: JSON files written atomically inside `server/data`
 - Account model: one hardcoded `student_1` shared by both device profiles
 - Web device separation: `phone` and `laptop` use different AsyncStorage namespaces
 - Sync model: custom operation queue and merge logic; no off-the-shelf sync product
@@ -70,7 +71,7 @@ The Expo app runs at `http://localhost:8081` on web. The backend defaults to `ht
 - Replay protection: Express deduplicates `operationId`, rewards by `sessionId`, and automation events by stable `eventId`
 - Notification delivery: genuine n8n workflow calling a mock Express sink
 - Focus grace period: five seconds before an app switch/background event fails the session
-- Development storage resets whenever the Express process restarts because server storage is intentionally in memory
+- Server state, processed operation ids, rewarded session ids and automation deliveries survive an Express restart
 
 ## Core Files
 
