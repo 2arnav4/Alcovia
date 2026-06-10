@@ -50,6 +50,10 @@ function validateSyncRequest(request: Partial<SyncRequest>): string | null {
       return "each operation requires a valid deviceId";
     }
 
+    if (operation.deviceId !== request.deviceId) {
+      return "operation deviceId must match request deviceId";
+    }
+
     if (operation.studentId !== "student_1") {
       return "each operation requires studentId student_1";
     }
@@ -65,7 +69,92 @@ function validateSyncRequest(request: Partial<SyncRequest>): string | null {
     if (!operation.payload || typeof operation.payload !== "object") {
       return "each operation requires payload";
     }
+
+    const payloadError = validateOperationPayload(
+      operation.type,
+      operation.payload,
+      operation.deviceId
+    );
+    if (payloadError) {
+      return payloadError;
+    }
   }
 
   return null;
+}
+
+function validateOperationPayload(
+  type: SyncOperationType,
+  payload: Record<string, unknown>,
+  operationDeviceId: DeviceId
+): string | null {
+  switch (type) {
+    case "task_status_changed":
+      if (!isText(payload.taskId)) {
+        return "task status operation requires taskId";
+      }
+      if (
+        payload.status !== "not_started" &&
+        payload.status !== "in_progress" &&
+        payload.status !== "done"
+      ) {
+        return "task status operation requires a valid status";
+      }
+      return null;
+    case "task_deleted":
+      return isText(payload.taskId) ? null : "task delete operation requires taskId";
+    case "focus_session_started": {
+      if (!payload.session || typeof payload.session !== "object") {
+        return "focus start operation requires session";
+      }
+      const session = payload.session as Record<string, unknown>;
+      if (!isText(session.sessionId) || !isIsoDate(session.startedAtIso)) {
+        return "focus start operation requires sessionId and startedAtIso";
+      }
+      if (!isTargetMinutes(session.targetMinutes)) {
+        return "focus start operation requires targetMinutes between 25 and 120";
+      }
+      if (session.deviceId !== operationDeviceId || session.status !== "running") {
+        return "focus start session must match its operation device and be running";
+      }
+      return null;
+    }
+    case "focus_session_completed":
+      if (
+        !isText(payload.sessionId) ||
+        !isIsoDate(payload.startedAtIso) ||
+        !isIsoDate(payload.completedAtIso)
+      ) {
+        return "focus completion requires sessionId, startedAtIso and completedAtIso";
+      }
+      return isTargetMinutes(payload.targetMinutes)
+        ? null
+        : "focus completion requires targetMinutes between 25 and 120";
+    case "focus_session_failed":
+      if (
+        !isText(payload.sessionId) ||
+        !isIsoDate(payload.startedAtIso) ||
+        !isIsoDate(payload.failedAtIso)
+      ) {
+        return "focus failure requires sessionId, startedAtIso and failedAtIso";
+      }
+      if (payload.reason !== "give_up" && payload.reason !== "app_switch") {
+        return "focus failure requires a valid reason";
+      }
+      return isTargetMinutes(payload.targetMinutes)
+        ? null
+        : "focus failure requires targetMinutes between 25 and 120";
+  }
+}
+
+function isText(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isIsoDate(value: unknown): value is string {
+  return typeof value === "string" && Number.isFinite(Date.parse(value));
+}
+
+function isTargetMinutes(value: unknown): value is number {
+  return Number.isInteger(value) && Number(value) >= 25 && Number(value) <= 120;
 }

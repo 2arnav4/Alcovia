@@ -40,7 +40,7 @@ export function FocusSessionPanel() {
       return;
     }
 
-    const intervalId = setInterval(() => setNow(Date.now()), 250);
+    const intervalId = setInterval(() => setNow(Date.now()), 250); //
     return () => clearInterval(intervalId);
   }, [currentSession]);
 
@@ -65,7 +65,8 @@ export function FocusSessionPanel() {
     dispatch(startSession(session));
     dispatch(
       enqueueOperation(
-        createFocusSessionStartedOperation({
+        createFocusSessionStartedOperation({       // Here we enqueue the start of the operation which when the user comes online will sync
+
           deviceId: selectedDeviceId,
           localSequence: pendingOperationCount + 1,
           session,
@@ -80,15 +81,19 @@ export function FocusSessionPanel() {
       return;
     }
 
-    dispatch(failSession("give_up"));
+    const failedAtIso = new Date().toISOString();
+    dispatch(failSession({ failedAtIso, reason: "give_up" }));
     dispatch(
-      enqueueOperation(
+      enqueueOperation(                         // Here we enqueue the failed operation which when the user comes online will sync
         createFocusSessionFailedOperation({
           deviceId: selectedDeviceId,
+          failedAtIso,
           localSequence: pendingOperationCount + 1,
           reason: "give_up",
           sessionId: currentSession.sessionId,
-          studentId
+          startedAtIso: currentSession.startedAtIso,
+          studentId,
+          targetMinutes: currentSession.targetMinutes
         })
       )
     );

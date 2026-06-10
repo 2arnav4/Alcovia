@@ -17,6 +17,8 @@ interface OperationBaseInput {
 export function createTaskStatusChangedOperation(
   input: OperationBaseInput & { taskId: string; status: TaskStatus }
 ): SyncOperation {
+  validateBaseInput(input);
+  requireText(input.taskId, "taskId");
   return {
     operationId: createLocalId("op_task_status", input.deviceId),
     deviceId: input.deviceId,
@@ -33,6 +35,8 @@ export function createTaskStatusChangedOperation(
 export function createTaskDeletedOperation(
   input: OperationBaseInput & { taskId: string }
 ): SyncOperation {
+  validateBaseInput(input);
+  requireText(input.taskId, "taskId");
   return {
     operationId: createLocalId("op_task_delete", input.deviceId),
     deviceId: input.deviceId,
@@ -48,6 +52,13 @@ export function createTaskDeletedOperation(
 export function createFocusSessionStartedOperation(
   input: OperationBaseInput & { session: FocusSession }
 ): SyncOperation {
+  validateBaseInput(input);
+  requireText(input.session.sessionId, "sessionId");
+  requireIsoDate(input.session.startedAtIso, "startedAtIso");
+  requireTargetMinutes(input.session.targetMinutes);
+  if (input.session.deviceId !== input.deviceId) {
+    throw new Error("session deviceId must match operation deviceId");
+  }
   return {
     operationId: createLocalId("op_focus_start", input.deviceId),
     deviceId: input.deviceId,
@@ -68,6 +79,11 @@ export function createFocusSessionCompletedOperation(
     targetMinutes: number;
   }
 ): SyncOperation {
+  validateBaseInput(input);
+  requireText(input.sessionId, "sessionId");
+  requireIsoDate(input.startedAtIso, "startedAtIso");
+  requireIsoDate(input.completedAtIso, "completedAtIso");
+  requireTargetMinutes(input.targetMinutes);
   return {
     operationId: createLocalId("op_focus_complete", input.deviceId),
     deviceId: input.deviceId,
@@ -92,6 +108,11 @@ export function createFocusSessionFailedOperation(
     targetMinutes: number;
   }
 ): SyncOperation {
+  validateBaseInput(input);
+  requireText(input.sessionId, "sessionId");
+  requireIsoDate(input.startedAtIso, "startedAtIso");
+  requireIsoDate(input.failedAtIso, "failedAtIso");
+  requireTargetMinutes(input.targetMinutes);
   return {
     operationId: createLocalId("op_focus_fail", input.deviceId),
     deviceId: input.deviceId,
@@ -106,4 +127,31 @@ export function createFocusSessionFailedOperation(
       targetMinutes: input.targetMinutes
     }
   };
+}
+
+function validateBaseInput(input: OperationBaseInput): void {
+  if (!Number.isInteger(input.localSequence) || input.localSequence < 1) {
+    throw new Error("localSequence must be a positive integer");
+  }
+  if (input.studentId !== "student_1") {
+    throw new Error("studentId must be student_1");
+  }
+}
+
+function requireText(value: string, fieldName: string): void {
+  if (!value.trim()) {
+    throw new Error(`${fieldName} is required`);
+  }
+}
+
+function requireIsoDate(value: string, fieldName: string): void {
+  if (!Number.isFinite(Date.parse(value))) {
+    throw new Error(`${fieldName} must be a valid date`);
+  }
+}
+
+function requireTargetMinutes(value: number): void {
+  if (!Number.isInteger(value) || value < 25 || value > 120) {
+    throw new Error("targetMinutes must be between 25 and 120");
+  }
 }
