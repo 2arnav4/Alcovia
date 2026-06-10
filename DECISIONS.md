@@ -60,6 +60,8 @@ Express applies each operation id once, merges the result and returns the server
 
 A focus completion that arrives before its start is not rewarded immediately. It is checked again after the matching start arrives. A successful session also cannot be changed back to running or failed by an older message.
 
+Only one sync request can run from a client at a time. If the network is turned off during sync, the active request is cancelled. A timeout or failed request does not remove pending operations. The Sync Lab shows Retry needed and the number of operations that are still saved. Retrying is safe because Express ignores operation ids it has already applied.
+
 ## What Each Control Does
 
 | Control | Why it is present |
@@ -109,6 +111,14 @@ Express uses atomically written JSON files. This keeps the backend easy to run a
 
 After sync, the server returns the full merged state instead of only returning the changed records. This makes the sync code easier to understand and makes convergence easy to demonstrate. It sends more data than a delta-sync design, but the assignment data is small enough for this choice.
 
+## n8n First and Express Migration
+
+`n8n-reward-prototype.json` contains the simple reward prototype. It receives a successful session, checks `sessionId`, adds one streak step and 50 coins, and remembers rewarded sessions in n8n workflow data.
+
+The final app uses the same reward rule inside Express. Express was chosen for the final version because it already has the saved focus start, target and completion time. It can validate the session and update coins, streak and focus minutes as one backend change. n8n remains responsible for the notification, which is easier to change without moving important account state out of Express.
+
+The n8n version is useful for testing a rule quickly. Its fallback is the Express version, which is better when the rule needs strict validation, durable storage and safe sync behavior.
+
 ## Requirement Check
 
 Feature A is built: offline start, automatic success, Give Up, five-second app-switch failure, server timing checks and one reward per session.
@@ -126,12 +136,10 @@ The frontend and backend use TypeScript. The frontend is React Native with Expo 
 The following extensions are not part of the completed core assignment:
 
 - Recovering a running timer safely after the app is killed and reopened
-- Stronger retry handling when the network drops during a sync request
 - Three or more device profiles
 - A user-facing screen for conflicts that need a manual choice
 - Random property tests that generate many offline edit orders
 - Delta sync that returns only changes instead of the full merged state
-- Showing a separate n8n-first reward prototype before the Express version
 - A two-way notification reply flow
 - A real-phone Expo Go demo
 

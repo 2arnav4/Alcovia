@@ -1,0 +1,44 @@
+{
+  "name": "Alcovia Reward Rule Prototype",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "alcovia-reward-prototype",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "8f67c24f-03eb-4eb3-a720-f2b8d280d911",
+      "name": "Successful Session",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-300, 0],
+      "webhookId": "alcovia-reward-prototype"
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $json.body ?? $json;\nconst { sessionId, studentId, currentStreak = 0, currentCoins = 0 } = payload;\n\nif (!sessionId || !studentId) {\n  throw new Error('sessionId and studentId are required');\n}\n\nconst store = $getWorkflowStaticData('global');\nstore.rewardedSessionIds ??= {};\n\nif (store.rewardedSessionIds[sessionId]) {\n  return [{ json: { sessionId, studentId, rewardApplied: false, reason: 'duplicate_session', ...store.rewardedSessionIds[sessionId] } }];\n}\n\nconst reward = {\n  streak: Number(currentStreak) + 1,\n  coins: Number(currentCoins) + 50,\n  coinsAwarded: 50\n};\n\nstore.rewardedSessionIds[sessionId] = reward;\n\nreturn [{ json: { sessionId, studentId, rewardApplied: true, ...reward } }];"
+      },
+      "id": "ad53c0c1-e60e-4c9c-bc51-df3c67ea7d50",
+      "name": "Apply Reward Once",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [0, 0]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Successful Session": {
+      "main": [[{"node": "Apply Reward Once", "type": "main", "index": 0}]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9c7f00bf-2df1-474e-9a3b-26aa479f74d4",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

@@ -89,6 +89,8 @@ Keep both values disabled for the normal assignment behavior.
 
 After Express confirms a successful focus session, it sends one event to n8n. n8n calls the mock notification sink, and the Alerts page displays the saved notification. The assignment allows this mock HTTP sink instead of a real WhatsApp provider.
 
+`n8n-reward-prototype.json` is a separate optional workflow. It shows the first, quick version of the reward rule inside n8n: add one streak step and 50 coins once for each `sessionId`. The app does not use this workflow in production. The final rule lives in Express because the backend can validate session timing and save rewards together with the synced state.
+
 ## Sync Rules
 
 Task progress uses this order:
@@ -131,6 +133,7 @@ Express stores its state in JSON files inside `server/data`. This is suitable fo
 - `server/src/services/syncService.ts`
 - `server/src/services/automationService.ts`
 - `n8n-workflow.json`
+- `n8n-reward-prototype.json`
 
 ## Not Included
 
