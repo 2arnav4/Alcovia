@@ -59,6 +59,7 @@ The client updates local state immediately for responsiveness and queues the sam
 - `sessionTiming.ts` inside features file contains the 5 sec rule code.
 - The focus file inside components contains the focus code where the timer is calculated using `Date.now()` instead of subtracting a single second every time. We chose this because browsers or devices may add a delay when the app is in the background for under 5 seconds. When the app comes back, the timer is calculated again from the original start time, so the delay does not make the timer incorrect.
 - The backend also checks the start time, completion time and target duration before giving coins or increasing the streak. This means an early completion message cannot receive a reward.
+- Today's focus minutes are stored with `todayFocusDate`. The client resets the number when it loads on a new UTC date. Express also resets it before returning state or handling sync. A session completed on an older date still gets its coins and streak reward, but it is not added to today's total.
 
 ## Syllabus progress
 
@@ -115,10 +116,14 @@ The client updates local state immediately for responsiveness and queues the sam
 
 - Express creates one automation event using `focus-success:<sessionId>` and keeps its delivery status on disk.
 - Failed or unconfigured deliveries remain retryable. A later sync tries them again.
+- Two sync requests can finish at almost the same time. Express now shares one active automation flush between those requests. This stops one Express process from posting the same pending event to n8n twice at the same time.
 - n8n checks whether a session was already delivered, but it does not mark it delivered before the HTTP notification sink succeeds.
 - After the sink succeeds, n8n stores the session id as delivered. The Express sink also deduplicates by `sessionId`, so a lost HTTP response and retry still creates one notification.
+- The sink now rejects a request without `sessionId` or `message`. Without a session id it cannot apply the exactly-once rule.
+- For n8n Cloud, localhost cannot be used for the notification sink. `NOTIFICATION_SINK_URL` contains the public Express sink URL. Express adds it to the event and the workflow reads `{{$json.notificationSinkUrl}}`.
 - The Sync Lab shows the automation status and attempt count so the exactly-once behavior can be demonstrated.
 - A production fallback would be a database outbox and a worker. The current persisted outbox follows the same basic idea without adding another service.
+- If Express was deployed as more than one server process, the in-process flush lock would not be enough. The production fallback would use a database row lock or a queue worker. This assignment runs one Express process with JSON storage.
 
 ## Requirement check
 
@@ -150,7 +155,7 @@ The client updates local state immediately for responsiveness and queues the sam
 - The exported n8n workflow sends the event to the mock Express notification sink.
 - n8n marks a session delivered only after the sink succeeds. The sink also stores one notification per session id.
 - The workflow is in `n8n-workflow.json`. It still has to be imported and activated in the n8n instance used for the demo.
-- Status: application code and exported workflow built. Express webhook, retry and sink behavior tested. Final import and activation in a real n8n instance is manual environment setup.
+- Status: application code and exported workflow built. Express webhook, concurrent flush, retry and sink behavior tested. Final import, publishing and execution in the user's n8n Cloud workspace is manual environment setup because it needs the user's Cloud account and public backend URL.
 
 ### Two devices and dev panel
 
@@ -191,4 +196,28 @@ The client updates local state immediately for responsiveness and queues the sam
 - Delete versus edit keeps the tombstone.
 - A failed automation delivery is retried and can later become delivered.
 - Duplicate notification sink calls create one notification.
+- Concurrent sync requests create one automation attempt for the same event.
+- A session completed on an older UTC date is not added to today's focus total.
 - The mobile Sync Lab was checked at a 390 by 844 viewport and the conflict controls worked without console errors.
+
+## What is still outside the code
+
+- Express needs a public HTTPS URL so n8n Cloud can call `/api/notifications/sink`. A deployed backend or a temporary tunnel can be used.
+- `n8n-workflow.json` must be imported and published in the user's n8n Cloud workspace.
+- The production webhook URL must be put in `server/.env` as `N8N_WEBHOOK_URL`.
+- The public sink URL must be put in `server/.env` as `NOTIFICATION_SINK_URL`.
+- The public backend base URL must be put in the root `.env` as `EXPO_PUBLIC_API_BASE_URL`.
+- The five minute demo video still has to be recorded.
+
+These are deployment and submission steps. No core Feature A, Feature B, sync conflict or Express API code is left unfinished after this pass.
+
+## Optional extensions not built
+
+- Two-way n8n actions back into the app
+- Starting the automation from n8n instead of Express
+- Three or more device profiles in the dev panel
+- Delta sync instead of returning the full canonical state
+- Automated fuzz testing with random operation order
+- A real WhatsApp provider instead of the allowed mock HTTP sink
+
+The assignment labels these as optional extensions, so they are not required for the core submission.

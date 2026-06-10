@@ -34,7 +34,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.ALCOVIA_NOTIFICATION_SINK_URL || 'http://host.docker.internal:4000/api/notifications/sink' }}",
+        "url": "={{ $json.notificationSinkUrl }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [

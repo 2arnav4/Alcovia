@@ -24,13 +24,26 @@ Copy the server environment example before starting Express:
 cp server/.env.example server/.env
 ```
 
-Import `n8n-workflow.json` into n8n, activate it, and run n8n with the notification sink URL available:
+For local app testing, create a root `.env`:
 
 ```bash
-ALCOVIA_NOTIFICATION_SINK_URL=http://host.docker.internal:4000/api/notifications/sink npx n8n
+cp .env.example .env
 ```
 
-When n8n runs directly on the host instead of Docker, use `http://localhost:4000/api/notifications/sink` for `ALCOVIA_NOTIFICATION_SINK_URL`.
+Use `http://localhost:4000` for `EXPO_PUBLIC_API_BASE_URL` while the app and backend are on the same computer. A physical phone needs the computer LAN address or a public backend URL.
+
+## n8n Cloud Setup
+
+The n8n Cloud workflow cannot call `localhost` on this computer. Express must be available through a public HTTPS URL before the full automation can be tested. A deployed backend is preferred; a temporary tunnel is also enough for the demo.
+
+1. Import `n8n-workflow.json` into n8n Cloud.
+2. Publish the workflow and copy its production webhook URL.
+3. Put the production webhook in `server/.env` as `N8N_WEBHOOK_URL`.
+4. Put the public Express sink URL in `server/.env` as `NOTIFICATION_SINK_URL=https://YOUR-PUBLIC-BACKEND/api/notifications/sink`.
+5. Put the same public backend base URL in the root `.env` as `EXPO_PUBLIC_API_BASE_URL=https://YOUR-PUBLIC-BACKEND`.
+6. Restart Express and Expo after changing the environment files.
+
+The backend adds `notificationSinkUrl` to the automation event. The imported workflow reads that value in its HTTP Request node, so it does not depend on n8n host environment variables.
 
 The Expo app runs at `http://localhost:8081` on web. The backend defaults to `http://localhost:4000`.
 
@@ -55,7 +68,8 @@ The Expo app runs at `http://localhost:8081` on web. The backend defaults to `ht
 
 ## Manual Setup Left
 
-- Import and activate `n8n-workflow.json` in the n8n instance used for the demo
+- Deploy or tunnel Express so n8n Cloud can reach the mock notification sink
+- Import, publish and test `n8n-workflow.json` in the n8n Cloud workspace used for the demo
 - Record the two-device walkthrough if a video submission is needed
 
 ## Constraint Choices
@@ -72,6 +86,27 @@ The Expo app runs at `http://localhost:8081` on web. The backend defaults to `ht
 - Notification delivery: genuine n8n workflow calling a mock Express sink
 - Focus grace period: five seconds before an app switch/background event fails the session
 - Server state, processed operation ids, rewarded session ids and automation deliveries survive an Express restart
+- Concurrent sync requests share one automation flush, so one Express process does not post the same pending event to n8n twice at the same time
+- Today's focus total is stored with a UTC date and resets when that date changes
+
+## Conflict Rules
+
+- Task status uses progress rank: `done` beats `in_progress`, which beats `not_started`.
+- Delete uses a tombstone and wins against an edit.
+- Duplicate operations are ignored by stable `operationId`.
+- A focus success is rewarded once by stable `sessionId`.
+- A success cannot be downgraded by a late running or failed operation.
+- A completion arriving before its start waits in the operation log and is checked after the matching start arrives.
+
+## Testing
+
+The Sync Lab can demonstrate phone/laptop divergence, status conflict, delete/edit conflict and duplicate replay. API checks should also cover invalid payloads, early focus completion, duplicate rewards, restart persistence and duplicate sink delivery. The exact manual walkthrough is in `DECISIONS.md`.
+
+## Left Out and Next Steps
+
+The core coding is complete. The remaining submission work is to give Express a public HTTPS URL, import and publish the workflow in n8n Cloud, put the resulting URLs in the two environment files, and record the demo video.
+
+If this prototype was taken further, the JSON files would be replaced with a database and unique constraints, the automation outbox would run in one worker, and the mock sink could be replaced with a real WhatsApp provider. Delta sync, three or more devices, random-order fuzz tests and two-way n8n actions are optional assignment extensions and are not included here.
 
 ## Core Files
 
