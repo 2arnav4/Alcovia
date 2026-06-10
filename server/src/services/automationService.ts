@@ -21,6 +21,8 @@ const savedDeliveries = readJsonFile<AutomationDelivery[]>("automation-state.jso
 const deliveries = new Map(
   savedDeliveries.map((delivery) => [delivery.event.eventId, delivery])
 );
+const DEFAULT_NOTIFICATION_SINK_URL =
+  "https://alcovia-a2dg.onrender.com/api/notifications/sink";
 let activeFlush: Promise<void> | null = null;
 
 function persistAutomationDeliveries(): void {
@@ -64,18 +66,17 @@ export async function flushAutomationDeliveries(): Promise<void> {
 
 async function performAutomationFlush(): Promise<void> {
   const webhookUrl = process.env.N8N_WEBHOOK_URL;
-  const notificationSinkUrl = process.env.NOTIFICATION_SINK_URL;
+  const notificationSinkUrl =
+    process.env.NOTIFICATION_SINK_URL ?? DEFAULT_NOTIFICATION_SINK_URL;
 
   for (const delivery of deliveries.values()) {
     if (delivery.status === "delivered") {
       continue;
     }
 
-    if (!webhookUrl || !notificationSinkUrl) {
+    if (!webhookUrl) {
       delivery.status = "waiting_for_configuration";
-      delivery.error = !webhookUrl
-        ? "N8N_WEBHOOK_URL is not configured"
-        : "NOTIFICATION_SINK_URL is not configured";
+      delivery.error = "N8N_WEBHOOK_URL is not configured";
       persistAutomationDeliveries();
       continue;
     }
