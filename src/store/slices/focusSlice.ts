@@ -5,6 +5,8 @@ import { FocusFailureReason, FocusSession, StudentState } from "@/types";
 export interface FocusSliceState {
   selectedDuration: number;
   currentSession: FocusSession | null;
+  currentSessionAwayStartedAtIso: string | null;
+  currentSessionLastActiveAtIso: string | null;
   focusSessions: FocusSession[];
   coins: number;
   streak: number;
@@ -15,6 +17,8 @@ export interface FocusSliceState {
 const initialState: FocusSliceState = {
   selectedDuration: 25,
   currentSession: null,
+  currentSessionAwayStartedAtIso: null,
+  currentSessionLastActiveAtIso: null,
   focusSessions: [],
   coins: 120,
   streak: 3,
@@ -31,6 +35,21 @@ const focusSlice = createSlice({
     },
     startSession(state, action: PayloadAction<FocusSession>) {
       state.currentSession = action.payload;
+      state.currentSessionAwayStartedAtIso = null;
+      state.currentSessionLastActiveAtIso = action.payload.startedAtIso;
+    },
+    markSessionActive(state, action: PayloadAction<string>) {
+      if (!state.currentSession) {
+        return;
+      }
+      state.currentSessionAwayStartedAtIso = null;
+      state.currentSessionLastActiveAtIso = action.payload;
+    },
+    markSessionAway(state, action: PayloadAction<string>) {
+      if (!state.currentSession || state.currentSessionAwayStartedAtIso) {
+        return;
+      }
+      state.currentSessionAwayStartedAtIso = action.payload;
     },
     completeSession(state, action: PayloadAction<string>) {
       if (!state.currentSession) {
@@ -45,6 +64,8 @@ const focusSlice = createSlice({
 
       state.focusSessions.unshift(completedSession);
       state.currentSession = null;
+      state.currentSessionAwayStartedAtIso = null;
+      state.currentSessionLastActiveAtIso = null;
       state.coins += 50;
       state.streak += 1;
       const completionDate = getFocusDate(action.payload);
@@ -69,12 +90,19 @@ const focusSlice = createSlice({
         failureReason: action.payload.reason
       });
       state.currentSession = null;
+      state.currentSessionAwayStartedAtIso = null;
+      state.currentSessionLastActiveAtIso = null;
     },
     hydrateFocusState(_state, action: PayloadAction<FocusSliceState>) {
       const currentDate = getFocusDate();
       const savedDate = action.payload.todayFocusDate ?? currentDate;
       return {
         ...action.payload,
+        currentSessionAwayStartedAtIso: action.payload.currentSessionAwayStartedAtIso ?? null,
+        currentSessionLastActiveAtIso:
+          action.payload.currentSessionLastActiveAtIso ??
+          action.payload.currentSession?.startedAtIso ??
+          null,
         todayFocusMinutes: savedDate === currentDate ? action.payload.todayFocusMinutes : 0,
         todayFocusDate: currentDate
       };
@@ -98,6 +126,8 @@ const focusSlice = createSlice({
       state.todayFocusDate = action.payload.student.todayFocusDate;
       if (serverCurrentSession && serverCurrentSession.status !== "running") {
         state.currentSession = null;
+        state.currentSessionAwayStartedAtIso = null;
+        state.currentSessionLastActiveAtIso = null;
       }
     },
     resetFocusState() {
@@ -111,6 +141,8 @@ export const {
   failSession,
   applyServerFocusState,
   hydrateFocusState,
+  markSessionActive,
+  markSessionAway,
   resetFocusState,
   setSelectedDuration,
   startSession
