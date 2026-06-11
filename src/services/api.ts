@@ -1,7 +1,8 @@
 import { NotificationStateResponse, SyncRequest, SyncResponse } from "@/types";
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
-const SYNC_TIMEOUT_MS = 10_000;
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
+const SYNC_TIMEOUT_MS = 30_000;
 let activeSyncController: AbortController | null = null;
 
 export async function fetchServerState() {
@@ -18,7 +19,7 @@ export async function fetchNotificationState(): Promise<NotificationStateRespons
 
   try {
     const response = await fetch(`${API_BASE_URL}/api/notifications`, {
-      signal: controller.signal
+      signal: controller.signal,
     });
     if (!response.ok) {
       throw new Error("Unable to fetch notification state");
@@ -40,7 +41,7 @@ export async function postSync(request: SyncRequest): Promise<SyncResponse> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
-      signal: controller.signal
+      signal: controller.signal,
     });
   } finally {
     clearTimeout(timeoutId);
