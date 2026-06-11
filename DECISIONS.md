@@ -151,3 +151,6 @@ The following extensions are not part of the completed core assignment:
 - A real-phone Expo Go demo
 
 Real WhatsApp delivery was also not added. The assignment allows the current mock HTTP notification sink, so this does not leave a core requirement incomplete.
+
+n8n workflow 
+![alt text](image.png)
