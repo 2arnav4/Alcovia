@@ -8,7 +8,7 @@ The app has one hardcoded student, `student_1`, and three device profiles: `phon
 
 - Focus sessions that can start, finish or fail while offline
 - A five-second grace period before leaving the app fails a running session
-- Coins, streak and focus-minute rewards counted once per successful session
+- Coins and focus minutes counted once per successful session, with the streak advancing once per active day
 - Subjects, chapters and tasks with instant offline progress updates
 - Custom conflict handling for changes made on different devices
 - A Sync Lab for device switching, conflict tests and duplicate replay tests
@@ -89,7 +89,7 @@ Keep both values disabled for the normal assignment behavior.
 
 After Express confirms a successful focus session, it sends one event to n8n. n8n calls the mock notification sink, and the Alerts page displays the saved notification. The assignment allows this mock HTTP sink instead of a real WhatsApp provider.
 
-`n8n-reward-prototype.json` is a separate optional workflow. It shows the first, quick version of the reward rule inside n8n: add one streak step and 50 coins once for each `sessionId`. The app does not use this workflow in production. The final rule lives in Express because the backend can validate session timing and save rewards together with the synced state.
+`n8n-reward-prototype.json` is a separate optional workflow. It shows the first, quick version of the reward rule inside n8n: add 50 coins once for each `sessionId` and advance the streak only once on the same UTC day. The app does not use this workflow in production. The final rule lives in Express because the backend can validate session timing and save rewards together with the synced state.
 
 ## Sync Rules
 

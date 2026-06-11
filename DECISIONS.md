@@ -18,7 +18,7 @@ The focus file inside components contains the focus code where the timer is calc
 
 If the student presses Give Up, the session fails with `give_up`. If the student leaves the Focus page or backgrounds the app for more than five seconds, it fails with `app_switch`. A failed session is recorded but receives no reward.
 
-Express checks the stored start time, completion time and target before accepting a success. A session cannot finish early and still get coins. A valid success gives 50 coins, increases the streak and adds the target minutes to today's focus total.
+Express checks the stored start time, completion time and target before accepting a success. A session cannot finish early and still get coins. Every valid success gives 50 coins and adds the target minutes to today's focus total. The streak advances only for the first successful session on a UTC day, so completing more sessions on the same day does not inflate it.
 
 The stable `sessionId` is used as the reward key. Replaying the same success does not give the reward again.
 
@@ -115,7 +115,7 @@ After sync, the server returns the full merged state instead of only returning t
 
 ## n8n First and Express Migration
 
-`n8n-reward-prototype.json` contains the simple reward prototype. It receives a successful session, checks `sessionId`, adds one streak step and 50 coins, and remembers rewarded sessions in n8n workflow data.
+`n8n-reward-prototype.json` contains the simple reward prototype. It receives a successful session, checks `sessionId`, adds 50 coins, advances the streak only when the completion date is different from `lastStreakDate`, and remembers rewarded sessions in n8n workflow data.
 
 The final app uses the same reward rule inside Express. Express was chosen for the final version because it already has the saved focus start, target and completion time. It can validate the session and update coins, streak and focus minutes as one backend change. n8n remains responsible for the notification, which is easier to change without moving important account state out of Express.
 
