@@ -1,5 +1,5 @@
 export type StudentId = "student_1";
-export type DeviceId = "phone" | "laptop";
+export type DeviceId = "phone" | "laptop" | "tablet";
 export type TaskStatus = "not_started" | "in_progress" | "done";
 export type FocusSessionStatus = "running" | "success" | "failed";
 export type SyncOperationType =
@@ -69,6 +69,15 @@ export interface SyncResponse {
   state: ServerStateSnapshot;
   notifications: NotificationLog[];
   automationDeliveries: AutomationDeliverySummary[];
+  conflicts: ConflictNotice[];
+}
+
+export interface ConflictNotice {
+  conflictId: string;
+  taskId: string;
+  type: "edit_after_delete" | "status_rank";
+  message: string;
+  resolution: string;
 }
 
 export interface AutomationDeliverySummary {

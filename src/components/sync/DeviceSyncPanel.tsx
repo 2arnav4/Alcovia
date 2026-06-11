@@ -21,7 +21,7 @@ import { clearDeviceState } from "@/services/storage";
 import { loadPersistedDeviceState } from "@/services/devicePersistence";
 import { DeviceId } from "@/types";
 
-const DEVICES: DeviceId[] = ["phone", "laptop"];
+const DEVICES: DeviceId[] = ["phone", "laptop", "tablet"];
 const CONFLICT_TASK_ID = "math-algebra-word";
 
 interface DeviceSnapshot {
@@ -304,6 +304,21 @@ export function DeviceSyncPanel() {
       <Section title="Pending changes">
         <OperationList operations={sync.pendingOperations} />
       </Section>
+
+      {sync.conflicts.length > 0 ? (
+        <Section title="Resolved conflicts">
+          <View className="gap-3">
+            {sync.conflicts.map((conflict) => (
+              <View key={conflict.conflictId} className="rounded-2xl bg-[#fff8e8] p-3">
+                <Text className="font-bold text-ink">{conflict.message}</Text>
+                <Text className="mt-1 text-sm leading-5 text-muted">
+                  Resolution: {conflict.resolution}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </Section>
+      ) : null}
 
       <Section title="This device">
         <View className="grid-cols-1 gap-3 md:grid md:grid-cols-3">

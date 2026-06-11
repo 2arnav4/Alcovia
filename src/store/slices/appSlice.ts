@@ -14,7 +14,8 @@ const initialState: AppSliceState = {
   isOnline: true,
   deviceOnline: {
     laptop: true,
-    phone: true
+    phone: true,
+    tablet: true
   }
 };
 

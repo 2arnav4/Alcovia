@@ -15,7 +15,7 @@ syncRouter.post("/", async (request, response) => {
   response.json(await handleSync(syncRequest as SyncRequest));
 });
 
-const DEVICE_IDS: DeviceId[] = ["phone", "laptop"];
+const DEVICE_IDS: DeviceId[] = ["phone", "laptop", "tablet"];
 const OPERATION_TYPES: SyncOperationType[] = [
   "focus_session_started",
   "focus_session_completed",
@@ -30,7 +30,7 @@ function validateSyncRequest(request: Partial<SyncRequest>): string | null {
   }
 
   if (!request.deviceId || !DEVICE_IDS.includes(request.deviceId)) {
-    return "deviceId must be phone or laptop";
+    return "deviceId must be phone, laptop or tablet";
   }
 
   if (!Array.isArray(request.operations)) {
