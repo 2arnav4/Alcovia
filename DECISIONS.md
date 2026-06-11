@@ -83,10 +83,14 @@ Only one sync request can run from a client at a time. If the network is turned 
 | Task status buttons | Change a task and recalculate progress without waiting for the network. |
 | Phone and Laptop | Switch between the two separate saved device profiles. |
 | Sync Now | Retries the pending queue and requests the latest server result. |
-| Reset Device | Clears only the selected device's local state for a fresh test. |
+| Reset Device | Resets the mock server's database and clears all local device states for a fresh test. |
 | Set In Progress and Set Done | Create a clear two-device status conflict for the demo. |
 | Delete Task | Creates an edit-versus-delete conflict using a tombstone. |
 | Replay Last | Adds the exact last operation again to prove duplicate messages are ignored. |
+
+## Mobile Bottom Navigation Layout Fix
+
+We resolved an overlap issue on mobile layouts. Because the bottom bar was positioned absolutely (`bottom-0`) without an explicit z-index, the `ScrollView` content was rendering in a way that intercepted click events on the upper half of the navigation bar. This led to accidental clicks on hidden background buttons (e.g., starting a focus session when attempting to switch tabs). We added `z-50` and an explicit `zIndex: 50` style to the bottom bar, and increased the button padding (`py-3`) to enlarge the touch target area.
 
 ## Successful App Flow
 

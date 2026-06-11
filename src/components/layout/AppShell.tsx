@@ -102,12 +102,12 @@ export function AppShell({ children }: PropsWithChildren) {
             <View className="mx-auto w-full max-w-5xl gap-4">{children}</View>
           </ScrollView>
 
-          <View className="absolute bottom-0 left-0 right-0 border-t border-violetSoft bg-white px-3 py-2 md:hidden">
+          <View className="absolute bottom-0 left-0 right-0 border-t border-violetSoft bg-white px-3 py-2 z-50 md:hidden" style={{ zIndex: 50 }}>
             <View className="flex-row justify-between rounded-3xl bg-white">
               {navItems.map((item) => (
                 <Link key={item.href} href={item.href} asChild>
                   <Pressable
-                    className={`flex-1 items-center rounded-2xl px-1 py-2 ${
+                    className={`flex-1 items-center rounded-2xl px-1 py-3 ${
                       pathname === item.href ? "bg-violetSoft" : "bg-white"
                     }`}
                   >
