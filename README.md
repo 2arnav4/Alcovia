@@ -2,7 +2,7 @@
 
 Alcovia is an offline-first study app built for the Full Stack Engineering Intern assignment. It uses TypeScript, React Native with Expo, Express and n8n.
 
-The app has one hardcoded student, `student_1`, and two device profiles, `phone` and `laptop`. Each device keeps its own saved state and pending changes, so both profiles can be used like separate devices in one browser.
+The app has one hardcoded student, `student_1`, and three device profiles: `phone`, `laptop` and `tablet`. Each device keeps its own saved state and pending changes, so the profiles behave like separate devices in one browser.
 
 ## Features
 
@@ -119,6 +119,7 @@ The frontend uses AsyncStorage. Phone and laptop have separate keys:
 ```text
 alcovia:v1:phone:redux-state
 alcovia:v1:laptop:redux-state
+alcovia:v1:tablet:redux-state
 ```
 
 Express stores its state in JSON files inside `server/data`. This is suitable for the assignment and local testing. A real production deployment should use a database with unique constraints. A free hosting service may replace its local files during a redeploy.

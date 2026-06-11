@@ -4,7 +4,7 @@
 
 There is no login because the assignment asks for one hardcoded account. Both devices use `student_1`.
 
-The phone and laptop profiles have separate AsyncStorage keys. This lets one browser act like two devices without both profiles reading the same local data.
+The phone, laptop and tablet profiles have separate AsyncStorage keys. This lets one browser act like multiple devices without the profiles reading the same local data.
 
 Redux stores the current screen data. AsyncStorage saves that data and the pending operation queue. The screen updates first, so the student does not have to wait for the internet.
 
@@ -22,6 +22,8 @@ Express checks the stored start time, completion time and target before acceptin
 
 The stable `sessionId` is used as the reward key. Replaying the same success does not give the reward again.
 
+While a session is running, the app saves its last active time and the time it first went away. If the page is refreshed or the app is reopened, these saved values are checked before the timer continues. More than five seconds away records `app_switch`; a shorter restart resumes from the original start time.
+
 ## Feature B: Syllabus Progress
 
 Every subject contains chapters and every chapter contains tasks. A task can be Not Started, In Progress or Done. Changing the status updates Redux immediately, so chapter and subject progress also changes immediately while offline.
@@ -38,7 +40,7 @@ in_progress = 1
 done = 2
 ```
 
-The higher value wins. Done therefore beats In Progress even if the operations reach Express in the opposite order. Delete wins against an edit, and the deleted task remains as a tombstone so an older edit cannot bring it back.
+The higher value wins. Done therefore beats In Progress even if the operations reach Express in the opposite order. Delete wins against an edit, and the deleted task remains as a tombstone so an older edit cannot bring it back. A tombstone always stores the same neutral task status, so its hidden data also converges in every arrival order.
 
 This was the most difficult part of Feature B. The rule had to give the same result in every arrival order without trusting either device clock.
 
@@ -131,14 +133,15 @@ The core two-device setup is built using separate phone and laptop storage. The 
 
 The frontend and backend use TypeScript. The frontend is React Native with Expo Router, the backend is Express, and no off-the-shelf sync product is used.
 
+The backend also has a random convergence test. It creates task status edits, deletes, duplicates and different arrival orders, then checks that every order produces the same task state.
+
+The Sync Lab supports phone, laptop and tablet. When Express has to reject a lower progress edit or an edit made after deletion, it returns a conflict notice. The Sync Lab shows the rule that was used and the value that was kept.
+
 ## Optional Extensions
 
 The following extensions are not part of the completed core assignment:
 
-- Recovering a running timer safely after the app is killed and reopened
-- Three or more device profiles
 - A user-facing screen for conflicts that need a manual choice
-- Random property tests that generate many offline edit orders
 - Delta sync that returns only changes instead of the full merged state
 - A two-way notification reply flow
 - A real-phone Expo Go demo
