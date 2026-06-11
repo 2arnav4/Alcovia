@@ -9,18 +9,20 @@ import {
   serverState,
   serverVersion
 } from "../data/serverState";
-import { FocusSession, SyncOperation, SyncRequest, SyncResponse, TaskStatus } from "../types";
+import {
+  ConflictNotice,
+  FocusSession,
+  SyncOperation,
+  SyncRequest,
+  SyncResponse,
+  TaskStatus
+} from "../types";
 import {
   flushAutomationDeliveries,
   getAutomationDeliveries,
   queueFocusSuccessAutomation
 } from "./automationService";
-
-const TASK_STATUS_RANK: Record<TaskStatus, number> = {
-  not_started: 0,
-  in_progress: 1,
-  done: 2
-};
+import { mergeTaskDeletion, mergeTaskStatus } from "./taskMerge";
 
 const FOCUS_REWARD_COINS = 50;
 
@@ -40,6 +42,7 @@ export function getState() {
 export async function handleSync(request: SyncRequest): Promise<SyncResponse> {
   resetTodayFocusIfNeeded();
   const acceptedOperationIds = new Set<string>();
+  const conflicts: ConflictNotice[] = [];
 
   for (const operation of request.operations) {
     acceptedOperationIds.add(operation.operationId);
@@ -50,7 +53,7 @@ export async function handleSync(request: SyncRequest): Promise<SyncResponse> {
 
     appliedOperationIds.add(operation.operationId);
     operationLog.push(operation);
-    applyOperation(operation);
+    applyOperation(operation, conflicts);
     bumpServerVersion();
     persistServerData();
   }
@@ -63,14 +66,15 @@ export async function handleSync(request: SyncRequest): Promise<SyncResponse> {
     acceptedOperationIds: Array.from(acceptedOperationIds),
     state: serverState,
     notifications: notificationLogs,
-    automationDeliveries: getAutomationDeliveries()
+    automationDeliveries: getAutomationDeliveries(),
+    conflicts
   };
 }
 
-function applyOperation(operation: SyncOperation): void {
+function applyOperation(operation: SyncOperation, conflicts: ConflictNotice[]): void {
   switch (operation.type) {
     case "task_status_changed":
-      applyTaskStatusChanged(operation);
+      applyTaskStatusChanged(operation, conflicts);
       return;
     case "task_deleted":
       applyTaskDeleted(operation);
@@ -87,7 +91,10 @@ function applyOperation(operation: SyncOperation): void {
   }
 }
 
-function applyTaskStatusChanged(operation: SyncOperation): void {
+function applyTaskStatusChanged(
+  operation: SyncOperation,
+  conflicts: ConflictNotice[]
+): void {
   const taskId = getStringPayload(operation, "taskId");
   const incomingStatus = getTaskStatusPayload(operation, "status");
   if (!taskId || !incomingStatus) {
@@ -95,13 +102,39 @@ function applyTaskStatusChanged(operation: SyncOperation): void {
   }
 
   const task = findTask(taskId);
-  if (!task || task.deleted) {
+  if (!task) {
     return;
   }
 
-  if (TASK_STATUS_RANK[incomingStatus] >= TASK_STATUS_RANK[task.status]) {
-    task.status = incomingStatus;
+  if (task.deleted) {
+    conflicts.push({
+      conflictId: `conflict:${operation.operationId}`,
+      taskId,
+      type: "edit_after_delete",
+      message: `${task.title} was edited after it had been deleted.`,
+      resolution: "The deletion was kept."
+    });
+    return;
   }
+
+  if (incomingStatus !== task.status) {
+    const resolvedTask = { ...task };
+    mergeTaskStatus(resolvedTask, incomingStatus);
+    if (resolvedTask.status !== incomingStatus) {
+      conflicts.push({
+        conflictId: `conflict:${operation.operationId}`,
+        taskId,
+        type: "status_rank",
+        message: `${task.title} had two different progress updates.`,
+        resolution: `${formatTaskStatus(task.status)} was kept because it is further along than ${formatTaskStatus(incomingStatus)}.`
+      });
+    }
+  }
+  mergeTaskStatus(task, incomingStatus);
+}
+
+function formatTaskStatus(status: TaskStatus): string {
+  return status.replaceAll("_", " ");
 }
 
 function applyTaskDeleted(operation: SyncOperation): void {
@@ -112,7 +145,7 @@ function applyTaskDeleted(operation: SyncOperation): void {
 
   const task = findTask(taskId);
   if (task) {
-    task.deleted = true;
+    mergeTaskDeletion(task);
   }
 }
 
