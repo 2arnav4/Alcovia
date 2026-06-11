@@ -5,6 +5,7 @@ export const initialStudentState: StudentState = {
   studentId: "student_1",
   coins: 120,
   streak: 3,
+  lastStreakDate: null,
   todayFocusMinutes: 40,
   todayFocusDate: getFocusDate()
 };

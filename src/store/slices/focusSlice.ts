@@ -10,6 +10,7 @@ export interface FocusSliceState {
   focusSessions: FocusSession[];
   coins: number;
   streak: number;
+  lastStreakDate: string | null;
   todayFocusMinutes: number;
   todayFocusDate: string;
 }
@@ -22,6 +23,7 @@ const initialState: FocusSliceState = {
   focusSessions: [],
   coins: 120,
   streak: 3,
+  lastStreakDate: null,
   todayFocusMinutes: 40,
   todayFocusDate: getFocusDate()
 };
@@ -67,8 +69,11 @@ const focusSlice = createSlice({
       state.currentSessionAwayStartedAtIso = null;
       state.currentSessionLastActiveAtIso = null;
       state.coins += 50;
-      state.streak += 1;
       const completionDate = getFocusDate(action.payload);
+      if (state.lastStreakDate !== completionDate) {
+        state.streak += 1;
+        state.lastStreakDate = completionDate;
+      }
       if (state.todayFocusDate !== completionDate) {
         state.todayFocusMinutes = 0;
         state.todayFocusDate = completionDate;
@@ -103,6 +108,7 @@ const focusSlice = createSlice({
           action.payload.currentSessionLastActiveAtIso ??
           action.payload.currentSession?.startedAtIso ??
           null,
+        lastStreakDate: action.payload.lastStreakDate ?? null,
         todayFocusMinutes: savedDate === currentDate ? action.payload.todayFocusMinutes : 0,
         todayFocusDate: currentDate
       };
@@ -122,6 +128,7 @@ const focusSlice = createSlice({
       );
       state.coins = action.payload.student.coins;
       state.streak = action.payload.student.streak;
+      state.lastStreakDate = action.payload.student.lastStreakDate;
       state.todayFocusMinutes = action.payload.student.todayFocusMinutes;
       state.todayFocusDate = action.payload.student.todayFocusDate;
       if (serverCurrentSession && serverCurrentSession.status !== "running") {

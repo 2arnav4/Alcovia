@@ -14,6 +14,7 @@ export interface StudentState {
   studentId: StudentId;
   coins: number;
   streak: number;
+  lastStreakDate: string | null;
   todayFocusMinutes: number;
   todayFocusDate: string;
 }

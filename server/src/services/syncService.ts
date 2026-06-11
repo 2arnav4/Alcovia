@@ -23,6 +23,7 @@ import {
   queueFocusSuccessAutomation
 } from "./automationService";
 import { mergeTaskDeletion, mergeTaskStatus } from "./taskMerge";
+import { shouldAdvanceDailyStreak } from "./rewardPolicy";
 
 const FOCUS_REWARD_COINS = 50;
 
@@ -232,10 +233,13 @@ function applyFocusSessionCompleted(operation: SyncOperation): void {
   if (!rewardedSessionIds.has(sessionId)) {
     rewardedSessionIds.add(sessionId);
     serverState.student.coins += FOCUS_REWARD_COINS;
-    serverState.student.streak += 1;
 
     const completionDate = getFocusDate(completedAtIso);
     const currentDate = getFocusDate(new Date().toISOString());
+    if (shouldAdvanceDailyStreak(serverState.student.lastStreakDate, completionDate)) {
+      serverState.student.streak += 1;
+      serverState.student.lastStreakDate = completionDate;
+    }
     if (completionDate === currentDate) {
       if (serverState.student.todayFocusDate !== currentDate) {
         serverState.student.todayFocusMinutes = 0;

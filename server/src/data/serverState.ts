@@ -19,6 +19,7 @@ const initialServerState: ServerStateSnapshot = {
     studentId: "student_1",
     coins: 120,
     streak: 3,
+    lastStreakDate: null,
     todayFocusMinutes: 40,
     todayFocusDate: getFocusDate()
   },
@@ -91,6 +92,20 @@ const savedServerData = readJsonFile<PersistedServerData>("server-state.json");
 export const serverState: ServerStateSnapshot =
   savedServerData?.serverState ?? initialServerState;
 serverState.student.todayFocusDate ??= getFocusDate();
+if (serverState.student.lastStreakDate === undefined) {
+  const successfulDates = Array.from(
+    new Set(
+      serverState.focusSessions
+        .filter((session) => session.status === "success" && session.completedAtIso)
+        .map((session) => getFocusDate(session.completedAtIso!))
+    )
+  ).sort();
+
+  serverState.student.lastStreakDate = successfulDates.at(-1) ?? null;
+  if (successfulDates.length > 0) {
+    serverState.student.streak = initialServerState.student.streak + successfulDates.length;
+  }
+}
 resetTodayFocusIfNeeded();
 export let serverVersion = savedServerData?.serverVersion ?? 0;
 export const appliedOperationIds = new Set(savedServerData?.appliedOperationIds ?? []);
