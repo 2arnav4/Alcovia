@@ -7,6 +7,7 @@ import { applyServerNotifications } from "@/store/slices/notificationSlice";
 import { applyServerSubjects } from "@/store/slices/syllabusSlice";
 import {
   clearAcceptedOperations,
+  setConflicts,
   setLastSyncError,
   setLastKnownServerVersion,
   setServerStatePreview,
@@ -35,6 +36,7 @@ export const runSyncNow = createAsyncThunk<void, void, { state: RootState }>(
       });
 
       thunkApi.dispatch(clearAcceptedOperations(response.acceptedOperationIds));
+      thunkApi.dispatch(setConflicts(response.conflicts ?? []));
       thunkApi.dispatch(setLastKnownServerVersion(response.serverVersion));
       thunkApi.dispatch(applyServerFocusState(response.state));
       thunkApi.dispatch(applyServerSubjects(response.state.subjects));

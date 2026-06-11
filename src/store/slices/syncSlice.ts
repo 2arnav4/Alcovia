@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { SyncOperation } from "@/types";
+import { ConflictNotice, SyncOperation } from "@/types";
 
 type SyncStatus = "idle" | "syncing" | "synced" | "offline" | "retry_needed";
 
@@ -8,6 +8,7 @@ export interface SyncSliceState {
   lastKnownServerVersion: number;
   syncStatus: SyncStatus;
   lastSyncError: string | null;
+  conflicts: ConflictNotice[];
   serverStatePreview: Record<string, unknown> | null;
 }
 
@@ -16,6 +17,7 @@ const initialState: SyncSliceState = {
   lastKnownServerVersion: 0,
   syncStatus: "idle",
   lastSyncError: null,
+  conflicts: [],
   serverStatePreview: null
 };
 
@@ -35,6 +37,9 @@ const syncSlice = createSlice({
     setLastSyncError(state, action: PayloadAction<string | null>) {
       state.lastSyncError = action.payload;
     },
+    setConflicts(state, action: PayloadAction<ConflictNotice[]>) {
+      state.conflicts = action.payload;
+    },
     setServerStatePreview(state, action: PayloadAction<Record<string, unknown> | null>) {
       state.serverStatePreview = action.payload;
     },
@@ -46,6 +51,7 @@ const syncSlice = createSlice({
       return {
         ...initialState,
         ...action.payload,
+        conflicts: action.payload.conflicts ?? [],
         lastSyncError: action.payload.lastSyncError ?? null,
         syncStatus: savedStatus === "error" ? "retry_needed" : savedStatus
       };
@@ -71,6 +77,7 @@ export const {
   enqueueOperation,
   hydrateSyncState,
   resetSyncState,
+  setConflicts,
   setLastSyncError,
   setLastKnownServerVersion,
   setServerStatePreview,
