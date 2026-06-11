@@ -28,7 +28,7 @@ function applyOperations(operations: TaskOperation[]): StudyTask {
     }
   }
 
-  return task;
+  return task; // return the modified task
 }
 
 function shuffled<T>(values: T[]): T[] {
