@@ -21,3 +21,9 @@ export async function clearDeviceState(deviceId: DeviceId): Promise<void> {
   const deviceKeys = keys.filter((key) => key.startsWith(`alcovia:${STORAGE_VERSION}:${deviceId}:`));
   await AsyncStorage.multiRemove(deviceKeys);
 }
+
+export async function clearAllDeviceStates(): Promise<void> {
+  const keys = await AsyncStorage.getAllKeys();
+  const deviceKeys = keys.filter((key) => key.startsWith(`alcovia:${STORAGE_VERSION}:`));
+  await AsyncStorage.multiRemove(deviceKeys);
+}

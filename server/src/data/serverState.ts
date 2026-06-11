@@ -136,3 +136,18 @@ export function persistServerData(): void {
     serverVersion
   } satisfies PersistedServerData);
 }
+
+export function resetServerData(): void {
+  const freshState = structuredClone(initialServerState);
+  freshState.student.todayFocusDate = getFocusDate();
+
+  serverState.student = freshState.student;
+  serverState.focusSessions = freshState.focusSessions;
+  serverState.subjects = freshState.subjects;
+  serverVersion = 0;
+  appliedOperationIds.clear();
+  rewardedSessionIds.clear();
+  operationLog.length = 0;
+  notificationLogs.length = 0;
+  persistServerData();
+}

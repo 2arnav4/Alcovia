@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import express from "express";
 import { healthRouter } from "./routes/health";
 import { notificationsRouter } from "./routes/notifications";
+import { resetRouter } from "./routes/reset";
 import { stateRouter } from "./routes/state";
 import { syncRouter } from "./routes/sync";
 
@@ -18,6 +19,7 @@ app.use("/api/health", healthRouter);
 app.use("/api/state", stateRouter);
 app.use("/api/sync", syncRouter);
 app.use("/api/notifications", notificationsRouter);
+app.use("/api/reset", resetRouter);
 
 app.listen(port, () => {
   console.log(`Alcovia API listening on http://localhost:${port}`);

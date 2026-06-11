@@ -14,10 +14,15 @@ import { resetFocusState } from "@/store/slices/focusSlice";
 import { setIsOnline, setSelectedDeviceId } from "@/store/slices/appSlice";
 import { resetNotificationState } from "@/store/slices/notificationSlice";
 import { deleteTask, resetSyllabusState, updateTaskStatus } from "@/store/slices/syllabusSlice";
-import { enqueueOperation, resetSyncState, setSyncStatus } from "@/store/slices/syncSlice";
+import {
+  enqueueOperation,
+  resetSyncState,
+  setLastSyncError,
+  setSyncStatus
+} from "@/store/slices/syncSlice";
 import { runSyncNow } from "@/store/thunks/syncThunks";
-import { cancelActiveSyncRequest } from "@/services/api";
-import { clearDeviceState } from "@/services/storage";
+import { cancelActiveSyncRequest, resetDemoServer } from "@/services/api";
+import { clearAllDeviceStates } from "@/services/storage";
 import { loadPersistedDeviceState } from "@/services/devicePersistence";
 import { DeviceId } from "@/types";
 
@@ -48,6 +53,7 @@ export function DeviceSyncPanel() {
   const conflictTask =
     availableTasks.find((task) => task.id === CONFLICT_TASK_ID) ?? availableTasks[0];
   const [isLoadingSnapshots, setIsLoadingSnapshots] = useState(true);
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -94,12 +100,23 @@ export function DeviceSyncPanel() {
     streak: focus.streak
   };
 
-  function resetLocalState() {
-    void clearDeviceState(app.selectedDeviceId);
-    dispatch(resetFocusState());
-    dispatch(resetSyllabusState());
-    dispatch(resetSyncState());
-    dispatch(resetNotificationState());
+  async function resetDemoState() {
+    setIsResetting(true);
+    dispatch(setLastSyncError(null));
+
+    try {
+      await resetDemoServer();
+      await clearAllDeviceStates();
+      dispatch(resetFocusState());
+      dispatch(resetSyllabusState());
+      dispatch(resetSyncState());
+      dispatch(resetNotificationState());
+      setStoredSnapshots({});
+    } catch {
+      dispatch(setLastSyncError("Demo reset could not finish. No local data was cleared."));
+    } finally {
+      setIsResetting(false);
+    }
   }
 
   function toggleNetwork() {
@@ -262,8 +279,16 @@ export function DeviceSyncPanel() {
                     : "Sync Now"}
               </Text>
             </Pressable>
-            <Pressable className="flex-1 rounded-2xl bg-coral px-4 py-4" onPress={resetLocalState}>
-              <Text className="text-center font-bold text-orange-950">Reset Device</Text>
+            <Pressable
+              className={`flex-1 rounded-2xl px-4 py-4 ${
+                isResetting ? "bg-lavender" : "bg-coral"
+              }`}
+              disabled={isResetting || isSyncing}
+              onPress={() => void resetDemoState()}
+            >
+              <Text className="text-center font-bold text-orange-950">
+                {isResetting ? "Resetting..." : "Reset Demo"}
+              </Text>
             </Pressable>
           </View>
         </View>

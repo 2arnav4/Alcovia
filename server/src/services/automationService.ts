@@ -111,3 +111,8 @@ async function performAutomationFlush(): Promise<void> {
 export function getAutomationDeliveries(): AutomationDelivery[] {
   return Array.from(deliveries.values());
 }
+
+export function resetAutomationDeliveries(): void {
+  deliveries.clear();
+  persistAutomationDeliveries();
+}

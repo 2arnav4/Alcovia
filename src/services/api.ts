@@ -57,6 +57,16 @@ export async function postSync(request: SyncRequest): Promise<SyncResponse> {
   return response.json();
 }
 
+export async function resetDemoServer(): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/reset`, {
+    method: "POST"
+  });
+
+  if (!response.ok) {
+    throw new Error("Unable to reset demo server");
+  }
+}
+
 export function cancelActiveSyncRequest(): void {
   activeSyncController?.abort();
 }
